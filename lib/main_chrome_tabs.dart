@@ -5,6 +5,7 @@ import 'package:dynamic_tab_zenrouter/chrome_tabs.dart';
 import 'package:dynamic_tab_zenrouter/tabs_path.dart';
 import 'package:flutter/material.dart';
 import 'package:zenrouter/zenrouter.dart';
+import 'package:zenrouter_devtools/zenrouter_devtools.dart';
 
 // ============================================================================
 // Base Route Types
@@ -444,10 +445,7 @@ class PostCommentRoute extends AppRoute {
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
-    final comments = List.generate(
-      5,
-      (i) => (user: 'User ${i + 1}', text: 'Comment #${i + 1} on post $postId.'),
-    );
+    final comments = List.generate(5, (i) => (user: 'User ${i + 1}', text: 'Comment #${i + 1} on post $postId.'));
 
     return Column(
       children: [
@@ -607,9 +605,7 @@ class DetailSectionRoute extends AppRoute {
                       title: Text('Note ${i + 1}', style: const TextStyle(fontWeight: FontWeight.w600)),
                       subtitle: Text('Note content for tab $tabId'),
                       trailing: const Icon(Icons.chevron_right),
-                      onTap: () => coordinator.push(
-                        DetailNoteRoute(tabId: tabId, noteId: i + 1),
-                      ),
+                      onTap: () => coordinator.push(DetailNoteRoute(tabId: tabId, noteId: i + 1)),
                     ),
                   ),
                 ),
@@ -719,21 +715,28 @@ class _InTabNavBar extends StatelessWidget {
 // Coordinator
 // ============================================================================
 
-class AppCoordinator extends Coordinator<AppRoute> {
+class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRoute> {
+  AppCoordinator();
+  @override
+  bool get debugEnabled => true;
+
   // ---------------------------------------------------------------------------
   // Static per-tab NavigationPaths
   // ---------------------------------------------------------------------------
 
-  late final homeTabPath = NavigationPath<AppRoute>.createWith(
-    coordinator: this, label: 'home-tab', stack: [HomeTab()],
-  )..bindLayout(HomeTabLayout.new);
+  late final homeTabPath = NavigationPath<AppRoute>.createWith(coordinator: this, label: 'home-tab', stack: [HomeTab()])
+    ..bindLayout(HomeTabLayout.new);
 
   late final aboutTabPath = NavigationPath<AppRoute>.createWith(
-    coordinator: this, label: 'about-tab', stack: [AboutTab()],
+    coordinator: this,
+    label: 'about-tab',
+    stack: [AboutTab()],
   )..bindLayout(AboutTabLayout.new);
 
   late final settingsTabPath = NavigationPath<AppRoute>.createWith(
-    coordinator: this, label: 'settings-tab', stack: [SettingsTab()],
+    coordinator: this,
+    label: 'settings-tab',
+    stack: [SettingsTab()],
   )..bindLayout(SettingsTabLayout.new);
 
   // ---------------------------------------------------------------------------
@@ -769,9 +772,8 @@ class AppCoordinator extends Coordinator<AppRoute> {
   // Tab strip
   // ---------------------------------------------------------------------------
 
-  late final tabsPath = TabsPath<TabRoute>.createWith(
-    coordinator: this, label: 'tabs', stack: [HomeTabLayout()],
-  )..bindLayout(ChromeTabLayout.new);
+  late final tabsPath = TabsPath<TabRoute>.createWith(coordinator: this, label: 'tabs', stack: [HomeTabLayout()])
+    ..bindLayout(ChromeTabLayout.new);
 
   // ---------------------------------------------------------------------------
   // Coordinator overrides
@@ -795,10 +797,11 @@ class AppCoordinator extends Coordinator<AppRoute> {
       ['home', 'post', final id] => PostDetailRoute(postId: int.tryParse(id) ?? 0, postTitle: 'Post $id'),
       ['home', 'post', final id, 'comments'] => PostCommentRoute(postId: int.tryParse(id) ?? 0),
       ['detail', final id] => DetailTab(id: int.tryParse(id) ?? 0),
-      ['detail', final id, 'notes', final noteId] =>
-        DetailNoteRoute(tabId: int.tryParse(id) ?? 0, noteId: int.tryParse(noteId) ?? 0),
-      ['detail', final id, final section] =>
-        DetailSectionRoute(tabId: int.tryParse(id) ?? 0, section: section),
+      ['detail', final id, 'notes', final noteId] => DetailNoteRoute(
+        tabId: int.tryParse(id) ?? 0,
+        noteId: int.tryParse(noteId) ?? 0,
+      ),
+      ['detail', final id, final section] => DetailSectionRoute(tabId: int.tryParse(id) ?? 0, section: section),
       ['about'] => AboutTab(),
       ['about', 'tech', final name] => TechDetailRoute(name: name),
       ['settings'] => SettingsTab(),
