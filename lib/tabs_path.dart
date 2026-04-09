@@ -24,6 +24,38 @@ class TabsPath<T extends RouteTab> extends StackPath<T>
   int? _activeIndex;
   int? get activeIndex => _activeIndex;
 
+  // -------------------------------------------------------------------------
+  // Per-tab nested navigation
+  // -------------------------------------------------------------------------
+
+  final Map<T, NavigationPath<RouteUnique>> _tabPaths = {};
+
+  /// Returns the [NavigationPath] for [tab]'s inner navigation.
+  ///
+  /// On first access a fresh path is created and seeded with a root route
+  /// produced by the coordinator's URI parser so that the tab content is
+  /// always shown as the bottom-most route in the inner stack.
+  NavigationPath<RouteUnique> tabPathFor(T tab) {
+    return _tabPaths.putIfAbsent(tab, () {
+      final coord = coordinator as Coordinator;
+      final path = NavigationPath<RouteUnique>.createWith(coordinator: coord, label: 'tab-inner-${tab.toUri().path}');
+      final rootRoute = coord.parseRouteFromUriSync(tab.toUri());
+      path.push(rootRoute);
+      return path;
+    });
+  }
+
+  /// Shortcut – the inner [NavigationPath] of the currently active tab.
+  NavigationPath<RouteUnique>? get activeTabPath {
+    final route = activeRoute;
+    if (route == null) return null;
+    return tabPathFor(route);
+  }
+
+  // -------------------------------------------------------------------------
+  // Tab management
+  // -------------------------------------------------------------------------
+
   void goToIndexed(int index) {
     _activeIndex = index;
     notifyListeners();
@@ -58,6 +90,10 @@ class TabsPath<T extends RouteTab> extends StackPath<T>
 
   @override
   void reset() {
+    for (final path in _tabPaths.values) {
+      path.reset();
+    }
+    _tabPaths.clear();
     clear();
     _activeIndex = null;
   }
@@ -81,6 +117,9 @@ class TabsPath<T extends RouteTab> extends StackPath<T>
 
   @override
   void remove(T element, {bool discard = true}) {
+    final removedPath = _tabPaths.remove(element);
+    removedPath?.reset();
+
     final index = stack.indexOf(element);
     super.remove(element, discard: discard);
     if (index == _activeIndex && index < stack.length) return;
@@ -89,18 +128,23 @@ class TabsPath<T extends RouteTab> extends StackPath<T>
     notifyListeners();
   }
 
+  // -------------------------------------------------------------------------
+  // Serialisation / restoration
+  // -------------------------------------------------------------------------
+
   @override
   TabsPathModel<T> deserialize(Map<String, dynamic> data) {
     final coord = coordinator as Coordinator;
     return TabsPathModel([
       for (final route in data['stack'])
         RestorableConverter.deserializeRoute(
-          route,
-          parseRouteFromUri: coord.parseRouteFromUriSync,
-          createLayoutParent: coord.createLayoutParent,
-          decodeLayoutKey: coord.decodeLayoutKey,
-          getRestorableConverter: coord.getRestorableConverter,
-        ) as T,
+              route,
+              parseRouteFromUri: coord.parseRouteFromUriSync,
+              createLayoutParent: coord.createLayoutParent,
+              decodeLayoutKey: coord.decodeLayoutKey,
+              getRestorableConverter: coord.getRestorableConverter,
+            )
+            as T,
     ], data['activeIndex']);
   }
 

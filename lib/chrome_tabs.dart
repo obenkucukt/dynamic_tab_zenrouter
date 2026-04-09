@@ -121,7 +121,11 @@ class _ChromeTabsState<T extends RouteTab> extends State<ChromeTabs<T>> {
                   color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                   child: switch (widget.path.activeRoute) {
                     null => const Center(child: Text('No tab selected')),
-                    final route => route.build(widget.coordinator, context),
+                    final tab => _TabContentStack(
+                      key: ValueKey(tab),
+                      coordinator: widget.coordinator,
+                      path: widget.path.tabPathFor(tab),
+                    ),
                   },
                 ),
         ),
@@ -594,6 +598,32 @@ class _GridTabCardState<T extends RouteTab> extends State<_GridTabCard<T>> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Renders the inner [NavigationStack] for a single tab.
+///
+/// Each tab gets its own [NavigationPath] so that sub-route pushes/pops are
+/// scoped to the tab and preserved across tab switches.
+class _TabContentStack extends StatelessWidget {
+  const _TabContentStack({
+    super.key,
+    required this.coordinator,
+    required this.path,
+  });
+
+  final Coordinator coordinator;
+  final NavigationPath<RouteUnique> path;
+
+  @override
+  Widget build(BuildContext context) {
+    return NavigationStack<RouteUnique>(
+      path: path,
+      coordinator: coordinator,
+      resolver: (route) => StackTransition.material(
+        Builder(builder: (ctx) => route.build(coordinator, ctx)),
       ),
     );
   }
