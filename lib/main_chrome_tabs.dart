@@ -5,6 +5,7 @@ import 'package:dynamic_tab_zenrouter/chrome_tabs.dart';
 import 'package:dynamic_tab_zenrouter/tabs_path.dart';
 import 'package:flutter/material.dart';
 import 'package:zenrouter/zenrouter.dart';
+import 'package:zenrouter_devtools/zenrouter_devtools.dart';
 
 // ============================================================================
 // Route Definitions
@@ -384,12 +385,21 @@ class IndexRoute extends AppRoute with RouteRedirect {
 // Coordinator
 // ============================================================================
 
-class AppCoordinator extends Coordinator<AppRoute> {
-  late final tabsPath = TabsPath<TabRoute>.createWith(
-    coordinator: this,
-    label: 'tabs',
-    stack: [HomeTab()],
-  )..bindLayout(ChromeTabLayout.new);
+class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRoute> {
+  @override
+  bool get debugEnabled => true;
+
+  late final tabsPath = TabsPath<TabRoute>.createWith(coordinator: this, label: 'tabs', stack: [HomeTab()])
+    ..bindLayout(ChromeTabLayout.new);
+
+  @override
+  List<AppRoute> get debugRoutes => [
+    HomeTab(),
+    DetailTab(id: 1, title: 'Detail 1'),
+    AboutTab(),
+    SettingsTab(),
+    ...super.debugRoutes,
+  ];
 
   @override
   List<StackPath<RouteTarget>> get paths => [...super.paths, tabsPath];
