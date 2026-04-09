@@ -137,6 +137,11 @@ class TabsPath<T extends RouteTab> extends StackPath<T>
     final removedPath = _tabPaths.remove(element);
     removedPath?.reset();
 
+    if (element is RouteLayoutParent) {
+      final layoutPath = (element as RouteLayoutParent).resolvePath(coordinator!);
+      if (layoutPath is NavigationPath) layoutPath.reset();
+    }
+
     final index = stack.indexOf(element);
     super.remove(element, discard: discard);
     if (index == _activeIndex && index < stack.length) return;

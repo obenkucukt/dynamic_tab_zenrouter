@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:oref/oref.dart';
 import 'package:zenrouter/zenrouter.dart';
 import 'tabs_path.dart';
 
@@ -135,56 +136,59 @@ class _ChromeTab<T extends RouteTab> extends StatefulWidget {
 }
 
 class _ChromeTabState<T extends RouteTab> extends State<_ChromeTab<T>> {
-  bool _isHovered = false;
-
   @override
   Widget build(BuildContext context) {
+    final isHovered = signal<bool>(context, false);
     final activeColor = widget.isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final inactiveColor = widget.isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8EAED);
     final hoverColor = widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0);
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.only(top: 8, right: 1),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          constraints: const BoxConstraints(minWidth: 120, maxWidth: 240),
-          decoration: BoxDecoration(
-            color: widget.isActive
-                ? activeColor
-                : _isHovered
-                ? hoverColor
-                : inactiveColor,
-            borderRadius: const BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8)),
-            border: widget.isActive
-                ? Border(
-                    left: BorderSide(color: widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0)),
-                    right: BorderSide(color: widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0)),
-                    top: BorderSide(color: widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0)),
-                  )
-                : null,
+    return SignalBuilder(
+      builder: (context) {
+        return MouseRegion(
+          onEnter: (_) => isHovered.set(true),
+          onExit: (_) => isHovered.set(false),
+          child: GestureDetector(
+            onTap: widget.onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              margin: const EdgeInsets.only(top: 8, right: 1),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              constraints: const BoxConstraints(minWidth: 120, maxWidth: 240),
+              decoration: BoxDecoration(
+                color: widget.isActive
+                    ? activeColor
+                    : isHovered()
+                    ? hoverColor
+                    : inactiveColor,
+                borderRadius: const BorderRadius.only(topLeft: Radius.circular(12), topRight: Radius.circular(12)),
+                border: widget.isActive
+                    ? Border(
+                        left: BorderSide(color: widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0)),
+                        right: BorderSide(color: widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0)),
+                        top: BorderSide(color: widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0)),
+                      )
+                    : null,
+              ),
+              child: Row(
+                mainAxisSize: .min,
+                spacing: 12,
+                children: [
+                  Flexible(child: widget.route.tabLabel(widget.coordinator, widget.path, context, widget.isActive)),
+                  if (widget.onClose != null) ...[
+                    const SizedBox(width: 8),
+                    _CloseButton(
+                      onPressed: widget.onClose!,
+                      isVisible: isHovered() || widget.isActive,
+                      isDark: widget.isDark,
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
-          child: Row(
-            mainAxisSize: .min,
-            spacing: 12,
-            children: [
-              Flexible(child: widget.route.tabLabel(widget.coordinator, widget.path, context, widget.isActive)),
-              if (widget.onClose != null) ...[
-                const SizedBox(width: 8),
-                _CloseButton(
-                  onPressed: widget.onClose!,
-                  isVisible: _isHovered || widget.isActive,
-                  isDark: widget.isDark,
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
