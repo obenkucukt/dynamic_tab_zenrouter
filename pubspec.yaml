@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
   zenrouter: ^2.0.3
   zenrouter_devtools: ^2.0.0
   oref: ^2.8.0

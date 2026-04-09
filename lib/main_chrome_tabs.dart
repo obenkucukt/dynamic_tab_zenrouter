@@ -6,6 +6,7 @@ import 'package:dynamic_tab_zenrouter/tabs_path.dart';
 import 'package:flutter/material.dart';
 import 'package:zenrouter/zenrouter.dart';
 import 'package:zenrouter_devtools/zenrouter_devtools.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 // ============================================================================
 // Base Route Types
@@ -835,6 +836,7 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
 
 void main() {
   final coordinator = AppCoordinator();
+  usePathUrlStrategy();
 
   runApp(
     MaterialApp.router(
