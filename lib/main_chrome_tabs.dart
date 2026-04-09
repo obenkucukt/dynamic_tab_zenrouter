@@ -26,6 +26,18 @@ abstract class TabLayoutRoute extends TabRoute with RouteLayout<AppRoute> {
 }
 
 // ============================================================================
+// App Data
+// ============================================================================
+
+const _kApps = [
+  (id: 'notes', name: 'Notes', icon: Icons.note),
+  (id: 'calendar', name: 'Calendar', icon: Icons.calendar_today),
+  (id: 'music', name: 'Music', icon: Icons.music_note),
+  (id: 'photos', name: 'Photos', icon: Icons.photo),
+  (id: 'maps', name: 'Maps', icon: Icons.map),
+];
+
+// ============================================================================
 // Chrome Tab Layout (top-level shell)
 // ============================================================================
 
@@ -49,7 +61,148 @@ class ChromeTabLayout extends AppRoute with RouteLayout<AppRoute> {
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Chrome Tabs Demo'), centerTitle: false, elevation: 0),
-      body: buildPath(coordinator),
+      body: _ChromeTabLayoutBody(coordinator: coordinator, tabsContent: buildPath(coordinator)),
+    );
+  }
+}
+
+class _ChromeTabLayoutBody extends StatefulWidget {
+  const _ChromeTabLayoutBody({required this.coordinator, required this.tabsContent});
+
+  final AppCoordinator coordinator;
+  final Widget tabsContent;
+
+  @override
+  State<_ChromeTabLayoutBody> createState() => _ChromeTabLayoutBodyState();
+}
+
+enum _ActivePanel { apps, nodes, tabs }
+
+class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
+  _ActivePanel _hoveredPanel = _ActivePanel.tabs;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.coordinator.tabsPath.addListener(_onTabsChanged);
+    widget.coordinator.nodesOpen.addListener(_onNodesChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.coordinator.tabsPath.removeListener(_onTabsChanged);
+    widget.coordinator.nodesOpen.removeListener(_onNodesChanged);
+    super.dispose();
+  }
+
+  void _onTabsChanged() => setState(() {});
+  void _onNodesChanged() => setState(() {});
+
+  _ActivePanel get _activePanel {
+    if (_hoveredPanel != _ActivePanel.tabs) return _hoveredPanel;
+    if (widget.coordinator.tabsPath.activeRoute is AppTabLayout) return _ActivePanel.apps;
+    return _ActivePanel.tabs;
+  }
+
+  void _updateDisplayedUrl(Uri uri) {
+    if (!mounted) return;
+    Router.of(context).routeInformationProvider?.routerReportsNewRouteInformation(
+      RouteInformation(uri: uri),
+      type: RouteInformationReportingType.neglect,
+    );
+  }
+
+  void _onPanelEnter(_ActivePanel panel) {
+    _hoveredPanel = panel;
+    setState(() {});
+    switch (panel) {
+      case _ActivePanel.apps:
+        _updateDisplayedUrl(Uri.parse('/apps'));
+      case _ActivePanel.nodes:
+        _updateDisplayedUrl(Uri.parse('/nodes'));
+      case _ActivePanel.tabs:
+        _restoreTabUrl();
+    }
+  }
+
+  void _onPanelExit() {
+    _hoveredPanel = _ActivePanel.tabs;
+    setState(() {});
+  }
+
+  void _restoreTabUrl() {
+    final tabPath = widget.coordinator.tabsPath;
+    final activeTab = tabPath.activeRoute;
+    if (activeTab == null) return;
+    final innerPath = tabPath.tabPathFor(activeTab);
+    if (innerPath.stack.isEmpty) return;
+    _updateDisplayedUrl(innerPath.stack.last.toUri());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final active = _activePanel;
+    final borderColor = isDark ? const Color(0xFF3C3C3C) : const Color(0xFFE0E0E0);
+    final nodesOpen = widget.coordinator.nodesOpen.value;
+
+    Color borderFor(_ActivePanel panel) => active == panel ? Colors.blue : borderColor;
+    double widthFor(_ActivePanel panel) => active == panel ? 2.5 : 1;
+
+    return Row(
+      spacing: 2,
+      children: [
+        const SizedBox(width: 2),
+        MouseRegion(
+          onEnter: (_) => _onPanelEnter(_ActivePanel.apps),
+          onExit: (_) => _onPanelExit(),
+          child: Container(
+            width: 220,
+            padding: const EdgeInsets.all(2),
+            margin: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              border: Border.all(color: borderFor(_ActivePanel.apps), width: widthFor(_ActivePanel.apps)),
+            ),
+            child: _AppsSidebar(coordinator: widget.coordinator),
+          ),
+        ),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          width: nodesOpen ? 220 : 0,
+          child: nodesOpen
+              ? MouseRegion(
+                  onEnter: (_) => _onPanelEnter(_ActivePanel.nodes),
+                  onExit: (_) => _onPanelExit(),
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    margin: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                      border: Border.all(color: borderFor(_ActivePanel.nodes), width: widthFor(_ActivePanel.nodes)),
+                    ),
+                    child: _NodesPanel(coordinator: widget.coordinator),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        const SizedBox(width: 2),
+        Expanded(
+          child: MouseRegion(
+            onEnter: (_) => _onPanelEnter(_ActivePanel.tabs),
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              margin: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                border: Border.all(color: borderFor(_ActivePanel.tabs), width: widthFor(_ActivePanel.tabs)),
+              ),
+              child: widget.tabsContent,
+            ),
+          ),
+        ),
+        const SizedBox(width: 2),
+      ],
     );
   }
 }
@@ -135,6 +288,45 @@ class DetailTabLayout extends TabLayoutRoute {
       style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
+    );
+  }
+}
+
+// ============================================================================
+// Dynamic Per-App Tab Layout  (one instance per unique app id)
+// ============================================================================
+
+class AppTabLayout extends TabLayoutRoute {
+  AppTabLayout({required this.appId, this.appName});
+
+  final String appId;
+  final String? appName;
+
+  @override
+  List<Object?> get props => [appId];
+
+  @override
+  Object get layoutKey => (AppTabLayout, appId);
+
+  @override
+  NavigationPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.appTabPath(appId);
+
+  @override
+  Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
+    final name = appName ?? _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+    final icon = _kApps.where((a) => a.id == appId).firstOrNull?.icon ?? Icons.apps;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16),
+        const SizedBox(width: 8),
+        Text(
+          name,
+          style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 }
@@ -359,6 +551,81 @@ class DetailTab extends AppRoute {
   }
 }
 
+/// Root content for a dynamic app tab.
+class AppDetailTab extends AppRoute {
+  AppDetailTab({required this.appId});
+
+  final String appId;
+
+  @override
+  List<Object?> get props => [appId];
+
+  @override
+  Object? get parentLayoutKey => (AppTabLayout, appId);
+
+  @override
+  Uri toUri() => Uri.parse('/apps/$appId');
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    final app = _kApps.where((a) => a.id == appId).firstOrNull;
+    final appName = app?.name ?? appId;
+
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Text(appName, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        Text('App ID: $appId', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600])),
+        const SizedBox(height: 24),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.description),
+            title: const Text('Short Description', style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text('View the short description of this app'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => coordinator.push(AppDescriptionRoute(appId: appId, type: 'short')),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.article),
+            title: const Text('Full Description', style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text('View the full description of this app'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => coordinator.push(AppDescriptionRoute(appId: appId, type: 'full')),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text('App Settings', style: TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: const Text('Configure this app'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => coordinator.push(AppSettingsRoute(appId: appId)),
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Divider(),
+        const SizedBox(height: 16),
+        ValueListenableBuilder<bool>(
+          valueListenable: coordinator.nodesOpen,
+          builder: (context, isOpen, _) {
+            return ElevatedButton.icon(
+              onPressed: () => coordinator.nodesOpen.value = !isOpen,
+              icon: Icon(isOpen ? Icons.close : Icons.account_tree),
+              label: Text(isOpen ? 'Close Nodes' : 'Open Nodes'),
+              style: ElevatedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
 class IndexRoute extends AppRoute with RouteRedirect {
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) => const SizedBox.shrink();
@@ -564,6 +831,110 @@ class TechDetailRoute extends AppRoute {
   }
 }
 
+// --- App tab sub-routes -----------------------------------------------------
+
+class AppDescriptionRoute extends AppRoute {
+  AppDescriptionRoute({required this.appId, required this.type});
+
+  final String appId;
+  final String type;
+
+  @override
+  List<Object?> get props => [appId, 'description', type];
+
+  @override
+  Object? get parentLayoutKey => (AppTabLayout, appId);
+
+  @override
+  Uri toUri() => Uri.parse('/apps/$appId/description/$type');
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    final appName = _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+    final typeTitle = type == 'short' ? 'Short Description' : 'Full Description';
+
+    return Column(
+      children: [
+        _InTabNavBar(title: '$typeTitle - $appName', onBack: () => coordinator.tryPop()),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  typeTitle,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      type == 'short'
+                          ? '$appName is a powerful application for productivity and daily use.'
+                          : '$appName is a comprehensive application designed to enhance your '
+                                'productivity and streamline your daily workflow. It offers a wide '
+                                'range of features including real-time collaboration, cloud sync, '
+                                'and cross-platform support.\n\n'
+                                'Key features:\n'
+                                '- Intuitive user interface\n'
+                                '- Cross-platform compatibility\n'
+                                '- Real-time sync\n'
+                                '- Offline support',
+                      style: Theme.of(context).textTheme.bodyLarge,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class AppSettingsRoute extends AppRoute {
+  AppSettingsRoute({required this.appId});
+
+  final String appId;
+
+  @override
+  List<Object?> get props => [appId, 'settings'];
+
+  @override
+  Object? get parentLayoutKey => (AppTabLayout, appId);
+
+  @override
+  Uri toUri() => Uri.parse('/apps/$appId/settings');
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    final appName = _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+
+    return Column(
+      children: [
+        _InTabNavBar(title: 'Settings - $appName', onBack: () => coordinator.tryPop()),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: List.generate(
+              3,
+              (i) => SwitchListTile(
+                title: Text('$appName Setting ${i + 1}'),
+                subtitle: Text('Configure option ${i + 1}'),
+                value: i.isEven,
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 // --- Dynamic detail tab sub-routes ------------------------------------------
 
 /// A sub-page inside a dynamically-created detail tab.
@@ -656,13 +1027,7 @@ class DetailNoteRoute extends AppRoute with RouteDeepLink {
   Uri toUri() => Uri.parse('/detail/$tabId/notes/$noteId');
 
   @override
-  DeeplinkStrategy get deeplinkStrategy => DeeplinkStrategy.custom;
-
-  @override
-  Future<void> deeplinkHandler(AppCoordinator coordinator, Uri uri) async {
-    await coordinator.navigate(DetailSectionRoute(tabId: tabId, section: 'notes'));
-    await coordinator.push(this);
-  }
+  DeeplinkStrategy get deeplinkStrategy => DeeplinkStrategy.push;
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
@@ -731,13 +1096,277 @@ class _InTabNavBar extends StatelessWidget {
 }
 
 // ============================================================================
+// Apps Sidebar
+// ============================================================================
+
+class _AppsSidebar extends StatefulWidget {
+  const _AppsSidebar({required this.coordinator});
+
+  final AppCoordinator coordinator;
+
+  @override
+  State<_AppsSidebar> createState() => _AppsSidebarState();
+}
+
+class _AppsSidebarState extends State<_AppsSidebar> {
+  @override
+  void initState() {
+    super.initState();
+    widget.coordinator.tabsPath.addListener(_onTabsChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.coordinator.tabsPath.removeListener(_onTabsChanged);
+    super.dispose();
+  }
+
+  void _onTabsChanged() => setState(() {});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeTab = widget.coordinator.tabsPath.activeRoute;
+    String? activeAppId;
+    if (activeTab is AppTabLayout) {
+      activeAppId = activeTab.appId;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.apps, size: 20, color: isDark ? Colors.white70 : Colors.grey[700]),
+              const SizedBox(width: 8),
+              Text('Apps', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ),
+        Divider(height: 1, color: isDark ? const Color(0xFF3C3C3C) : const Color(0xFFE0E0E0)),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            children: _kApps.map((app) {
+              return _AppSidebarItem(
+                appId: app.id,
+                appName: app.name,
+                icon: app.icon,
+                isActive: app.id == activeAppId,
+                isDark: isDark,
+                onTap: () => widget.coordinator.navigate(AppDetailTab(appId: app.id)),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AppSidebarItem extends StatefulWidget {
+  const _AppSidebarItem({
+    required this.appId,
+    required this.appName,
+    required this.icon,
+    required this.isActive,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  final String appId;
+  final String appName;
+  final IconData icon;
+  final bool isActive;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  @override
+  State<_AppSidebarItem> createState() => _AppSidebarItemState();
+}
+
+class _AppSidebarItemState extends State<_AppSidebarItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = widget.isDark ? Colors.blue[700]! : Colors.blue[50]!;
+    final hoverColor = widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFF0F0F0);
+    final bgColor = widget.isActive
+        ? activeColor
+        : _isHovered
+        ? hoverColor
+        : Colors.transparent;
+    final textColor = widget.isActive
+        ? (widget.isDark ? Colors.blue[200]! : Colors.blue[800]!)
+        : (widget.isDark ? Colors.white : Colors.black87);
+    final iconColor = widget.isActive
+        ? (widget.isDark ? Colors.blue[200]! : Colors.blue[700]!)
+        : (widget.isDark ? Colors.white70 : Colors.grey[600]!);
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(8),
+            border: widget.isActive ? Border.all(color: Colors.blue, width: 1.5) : null,
+          ),
+          child: Row(
+            children: [
+              Icon(widget.icon, size: 20, color: iconColor),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  widget.appName,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.normal,
+                    color: textColor,
+                  ),
+                ),
+              ),
+              if (widget.isActive)
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// Nodes Panel
+// ============================================================================
+
+const _kNodes = [
+  (id: 'node-1', label: 'Input Node', icon: Icons.input),
+  (id: 'node-2', label: 'Transform Node', icon: Icons.transform),
+  (id: 'node-3', label: 'Filter Node', icon: Icons.filter_alt),
+  (id: 'node-4', label: 'Output Node', icon: Icons.output),
+  (id: 'node-5', label: 'Merge Node', icon: Icons.merge_type),
+  (id: 'node-6', label: 'Split Node', icon: Icons.call_split),
+];
+
+class _NodesPanel extends StatelessWidget {
+  const _NodesPanel({required this.coordinator});
+
+  final AppCoordinator coordinator;
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('NodesPanel build');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Icon(Icons.account_tree, size: 20, color: isDark ? Colors.white70 : Colors.grey[700]),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Nodes',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => coordinator.nodesOpen.value = false,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Icon(Icons.close, size: 18, color: isDark ? Colors.white54 : Colors.grey[500]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Divider(height: 1, color: isDark ? const Color(0xFF3C3C3C) : const Color(0xFFE0E0E0)),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            children: _kNodes.map((node) {
+              return _NodeItem(nodeId: node.id, label: node.label, icon: node.icon, isDark: isDark);
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NodeItem extends StatefulWidget {
+  const _NodeItem({required this.nodeId, required this.label, required this.icon, required this.isDark});
+
+  final String nodeId;
+  final String label;
+  final IconData icon;
+  final bool isDark;
+
+  @override
+  State<_NodeItem> createState() => _NodeItemState();
+}
+
+class _NodeItemState extends State<_NodeItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final hoverColor = widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFF0F0F0);
+    final bgColor = _isHovered ? hoverColor : Colors.transparent;
+    final iconColor = widget.isDark ? Colors.white70 : Colors.grey[600]!;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+        child: Row(
+          children: [
+            Icon(widget.icon, size: 20, color: iconColor),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                widget.label,
+                style: TextStyle(fontSize: 14, color: widget.isDark ? Colors.white : Colors.black87),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
 // Coordinator
 // ============================================================================
 
 class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRoute> {
   AppCoordinator();
+
   @override
   bool get debugEnabled => true;
+
+  final nodesOpen = ValueNotifier<bool>(false);
 
   // ---------------------------------------------------------------------------
   // Static per-tab NavigationPaths
@@ -777,12 +1406,32 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     });
   }
 
-  /// Lazily ensures the layout constructor exists before the coordinator
-  /// tries to look it up during layout resolution.
+  // ---------------------------------------------------------------------------
+  // Dynamic per-app NavigationPaths  (one per unique app id)
+  // ---------------------------------------------------------------------------
+
+  final Map<String, NavigationPath<AppRoute>> _appTabPaths = {};
+
+  NavigationPath<AppRoute> appTabPath(String appId) {
+    return _appTabPaths.putIfAbsent(appId, () {
+      defineLayoutParent(() => AppTabLayout(appId: appId));
+      final path = NavigationPath<AppRoute>.createWith(
+        coordinator: this,
+        label: 'app-$appId',
+        stack: [AppDetailTab(appId: appId)],
+      );
+      path.addListener(notifyListeners);
+      return path;
+    });
+  }
+
   @override
   RouteLayoutParent? createLayoutParent(Object layoutKey) {
     if (layoutKey case (Type _, int id)) {
       detailTabPath(id);
+    }
+    if (layoutKey case (Type _, String appId)) {
+      appTabPath(appId);
     }
     return super.createLayoutParent(layoutKey);
   }
@@ -806,10 +1455,15 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     aboutTabPath,
     settingsTabPath,
     ..._detailTabPaths.values,
+    ..._appTabPaths.values,
   ];
 
   @override
   FutureOr<AppRoute> parseRouteFromUri(Uri uri) {
+    if (uri.pathSegments case ['nodes']) {
+      nodesOpen.value = true;
+    }
+
     return switch (uri.pathSegments) {
       [] => IndexRoute(),
       ['home'] => HomeTab(),
@@ -825,6 +1479,11 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
       ['about', 'tech', final name] => TechDetailRoute(name: name),
       ['settings'] => SettingsTab(),
       ['settings', final section] => SettingsSectionRoute(sectionId: section, sectionTitle: section),
+      ['apps'] => HomeTab(),
+      ['apps', final id] => AppDetailTab(appId: id),
+      ['apps', final id, 'description', final type] => AppDescriptionRoute(appId: id, type: type),
+      ['apps', final id, 'settings'] => AppSettingsRoute(appId: id),
+      ['nodes'] => HomeTab(),
       _ => HomeTab(),
     };
   }
