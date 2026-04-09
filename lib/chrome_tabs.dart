@@ -4,12 +4,7 @@ import 'tabs_path.dart';
 
 /// A polished Chrome-like tab widget that displays tabs with modern styling.
 class ChromeTabs<T extends RouteTab> extends StatefulWidget {
-  const ChromeTabs({
-    super.key,
-    required this.coordinator,
-    required this.path,
-    this.onNewTab,
-  });
+  const ChromeTabs({super.key, required this.coordinator, required this.path, this.onNewTab});
 
   final Coordinator coordinator;
   final TabsPath<T> path;
@@ -36,15 +31,9 @@ class _ChromeTabsState<T extends RouteTab> extends State<ChromeTabs<T>> {
     super.dispose();
   }
 
-  void _onPathChanged() {
-    setState(() {});
-  }
+  void _onPathChanged() => setState(() {});
 
-  void _toggleView() {
-    setState(() {
-      _isGridView = !_isGridView;
-    });
-  }
+  void _toggleView() => setState(() => _isGridView = !_isGridView);
 
   void _activateTabFromGrid(int index) {
     widget.path.goToIndexed(index);
@@ -56,7 +45,7 @@ class _ChromeTabsState<T extends RouteTab> extends State<ChromeTabs<T>> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = theme.brightness == .dark;
 
     return Column(
       children: [
@@ -65,26 +54,17 @@ class _ChromeTabsState<T extends RouteTab> extends State<ChromeTabs<T>> {
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8EAED),
             border: Border(
-              bottom: BorderSide(
-                color: isDark
-                    ? const Color(0xFF3C3C3C)
-                    : const Color(0xFFDADCE0),
-                width: 1,
-              ),
+              bottom: BorderSide(color: isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0), width: 1),
             ),
           ),
           child: Row(
             children: [
               // Grid view toggle button
-              _GridViewToggleButton(
-                isGridView: _isGridView,
-                onPressed: _toggleView,
-                isDark: isDark,
-              ),
+              _GridViewToggleButton(isGridView: _isGridView, onPressed: _toggleView, isDark: isDark),
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
-                  scrollDirection: Axis.horizontal,
+                  scrollDirection: .horizontal,
                   itemCount: widget.path.stack.length,
                   itemBuilder: (context, index) {
                     final route = widget.path.stack[index];
@@ -95,16 +75,13 @@ class _ChromeTabsState<T extends RouteTab> extends State<ChromeTabs<T>> {
                       path: widget.path,
                       isActive: isActive,
                       onTap: () => widget.path.goToIndexed(index),
-                      onClose: widget.path.stack.length > 1
-                          ? () => widget.path.remove(route)
-                          : null,
+                      onClose: widget.path.stack.length > 1 ? () => widget.path.remove(route) : null,
                       isDark: isDark,
                     );
                   },
                 ),
               ),
-              if (widget.onNewTab != null)
-                _NewTabButton(onPressed: widget.onNewTab!, isDark: isDark),
+              if (widget.onNewTab != null) _NewTabButton(onPressed: widget.onNewTab!, isDark: isDark),
             ],
           ),
         ),
@@ -163,12 +140,8 @@ class _ChromeTabState<T extends RouteTab> extends State<_ChromeTab<T>> {
   @override
   Widget build(BuildContext context) {
     final activeColor = widget.isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final inactiveColor = widget.isDark
-        ? const Color(0xFF2D2D2D)
-        : const Color(0xFFE8EAED);
-    final hoverColor = widget.isDark
-        ? const Color(0xFF3C3C3C)
-        : const Color(0xFFDADCE0);
+    final inactiveColor = widget.isDark ? const Color(0xFF2D2D2D) : const Color(0xFFE8EAED);
+    final hoverColor = widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -186,41 +159,20 @@ class _ChromeTabState<T extends RouteTab> extends State<_ChromeTab<T>> {
                 : _isHovered
                 ? hoverColor
                 : inactiveColor,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(8),
-              topRight: Radius.circular(8),
-            ),
+            borderRadius: const BorderRadius.only(topLeft: Radius.circular(8), topRight: Radius.circular(8)),
             border: widget.isActive
                 ? Border(
-                    left: BorderSide(
-                      color: widget.isDark
-                          ? const Color(0xFF3C3C3C)
-                          : const Color(0xFFDADCE0),
-                    ),
-                    right: BorderSide(
-                      color: widget.isDark
-                          ? const Color(0xFF3C3C3C)
-                          : const Color(0xFFDADCE0),
-                    ),
-                    top: BorderSide(
-                      color: widget.isDark
-                          ? const Color(0xFF3C3C3C)
-                          : const Color(0xFFDADCE0),
-                    ),
+                    left: BorderSide(color: widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0)),
+                    right: BorderSide(color: widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0)),
+                    top: BorderSide(color: widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0)),
                   )
                 : null,
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: .min,
+            spacing: 12,
             children: [
-              Flexible(
-                child: widget.route.tabLabel(
-                  widget.coordinator,
-                  widget.path,
-                  context,
-                  widget.isActive,
-                ),
-              ),
+              Flexible(child: widget.route.tabLabel(widget.coordinator, widget.path, context, widget.isActive)),
               if (widget.onClose != null) ...[
                 const SizedBox(width: 8),
                 _CloseButton(
@@ -238,11 +190,7 @@ class _ChromeTabState<T extends RouteTab> extends State<_ChromeTab<T>> {
 }
 
 class _CloseButton extends StatefulWidget {
-  const _CloseButton({
-    required this.onPressed,
-    required this.isVisible,
-    required this.isDark,
-  });
+  const _CloseButton({required this.onPressed, required this.isVisible, required this.isDark});
 
   final VoidCallback onPressed;
   final bool isVisible;
@@ -270,18 +218,14 @@ class _CloseButtonState extends State<_CloseButton> {
             height: 16,
             decoration: BoxDecoration(
               color: _isHovered
-                  ? (widget.isDark
-                        ? const Color(0xFF5F5F5F)
-                        : const Color(0xFFDADCE0))
+                  ? (widget.isDark ? const Color(0xFF5F5F5F) : const Color(0xFFDADCE0))
                   : Colors.transparent,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.close,
               size: 12,
-              color: widget.isDark
-                  ? const Color(0xFFE8EAED)
-                  : const Color(0xFF5F6368),
+              color: widget.isDark ? const Color(0xFFE8EAED) : const Color(0xFF5F6368),
             ),
           ),
         ),
@@ -317,19 +261,11 @@ class _NewTabButtonState extends State<_NewTabButton> {
           margin: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
             color: _isHovered
-                ? (widget.isDark
-                      ? const Color(0xFF3C3C3C)
-                      : const Color(0xFFDADCE0))
+                ? (widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0))
                 : Colors.transparent,
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            Icons.add,
-            size: 18,
-            color: widget.isDark
-                ? const Color(0xFFE8EAED)
-                : const Color(0xFF5F6368),
-          ),
+          child: Icon(Icons.add, size: 18, color: widget.isDark ? const Color(0xFFE8EAED) : const Color(0xFF5F6368)),
         ),
       ),
     );
@@ -338,11 +274,7 @@ class _NewTabButtonState extends State<_NewTabButton> {
 
 // Grid view toggle button
 class _GridViewToggleButton extends StatefulWidget {
-  const _GridViewToggleButton({
-    required this.isGridView,
-    required this.onPressed,
-    required this.isDark,
-  });
+  const _GridViewToggleButton({required this.isGridView, required this.onPressed, required this.isDark});
 
   final bool isGridView;
   final VoidCallback onPressed;
@@ -369,22 +301,16 @@ class _GridViewToggleButtonState extends State<_GridViewToggleButton> {
           margin: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
             color: widget.isGridView
-                ? (widget.isDark
-                      ? const Color(0xFF5F5F5F)
-                      : const Color(0xFFDADCE0))
+                ? (widget.isDark ? const Color(0xFF5F5F5F) : const Color(0xFFDADCE0))
                 : _isHovered
-                ? (widget.isDark
-                      ? const Color(0xFF3C3C3C)
-                      : const Color(0xFFDADCE0))
+                ? (widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFDADCE0))
                 : Colors.transparent,
             shape: BoxShape.circle,
           ),
           child: Icon(
             widget.isGridView ? Icons.close_fullscreen : Icons.grid_view,
             size: 18,
-            color: widget.isDark
-                ? const Color(0xFFE8EAED)
-                : const Color(0xFF5F6368),
+            color: widget.isDark ? const Color(0xFFE8EAED) : const Color(0xFF5F6368),
           ),
         ),
       ),
@@ -483,18 +409,9 @@ class _GridTabCardState<T extends RouteTab> extends State<_GridTabCard<T>> {
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: borderColor,
-              width: widget.isActive ? 2 : 1,
-            ),
+            border: Border.all(color: borderColor, width: widget.isActive ? 2 : 1),
             boxShadow: _isHovered
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
+                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4))]
                 : [],
           ),
           child: Stack(
@@ -504,16 +421,12 @@ class _GridTabCardState<T extends RouteTab> extends State<_GridTabCard<T>> {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(7),
                   child: Container(
-                    color: widget.isDark
-                        ? const Color(0xFF1E1E1E)
-                        : const Color(0xFFF8F9FA),
+                    color: widget.isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF8F9FA),
                     child: Center(
                       child: Icon(
                         Icons.tab,
                         size: 48,
-                        color: widget.isDark
-                            ? const Color(0xFF5F5F5F)
-                            : const Color(0xFFDADCE0),
+                        color: widget.isDark ? const Color(0xFF5F5F5F) : const Color(0xFFDADCE0),
                       ),
                     ),
                   ),
@@ -535,14 +448,7 @@ class _GridTabCardState<T extends RouteTab> extends State<_GridTabCard<T>> {
                   ),
                   child: Row(
                     children: [
-                      Expanded(
-                        child: widget.route.tabLabel(
-                          widget.coordinator,
-                          widget.path,
-                          context,
-                          widget.isActive,
-                        ),
-                      ),
+                      Expanded(child: widget.route.tabLabel(widget.coordinator, widget.path, context, widget.isActive)),
                       if (widget.onClose != null && _isHovered) ...[
                         const SizedBox(width: 8),
                         GestureDetector(
@@ -550,17 +456,13 @@ class _GridTabCardState<T extends RouteTab> extends State<_GridTabCard<T>> {
                           child: Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: widget.isDark
-                                  ? const Color(0xFF3C3C3C)
-                                  : const Color(0xFFE8EAED),
+                              color: widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFE8EAED),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
                               Icons.close,
                               size: 14,
-                              color: widget.isDark
-                                  ? const Color(0xFFE8EAED)
-                                  : const Color(0xFF5F6368),
+                              color: widget.isDark ? const Color(0xFFE8EAED) : const Color(0xFF5F6368),
                             ),
                           ),
                         ),
@@ -575,23 +477,14 @@ class _GridTabCardState<T extends RouteTab> extends State<_GridTabCard<T>> {
                   top: 8,
                   right: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: widget.isDark
-                          ? const Color(0xFF4A90E2)
-                          : const Color(0xFF1976D2),
+                      color: widget.isDark ? const Color(0xFF4A90E2) : const Color(0xFF1976D2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Text(
                       'Active',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
@@ -608,11 +501,7 @@ class _GridTabCardState<T extends RouteTab> extends State<_GridTabCard<T>> {
 /// Each tab gets its own [NavigationPath] so that sub-route pushes/pops are
 /// scoped to the tab and preserved across tab switches.
 class _TabContentStack extends StatelessWidget {
-  const _TabContentStack({
-    super.key,
-    required this.coordinator,
-    required this.path,
-  });
+  const _TabContentStack({super.key, required this.coordinator, required this.path});
 
   final Coordinator coordinator;
   final NavigationPath<RouteUnique> path;
@@ -622,9 +511,7 @@ class _TabContentStack extends StatelessWidget {
     return NavigationStack<RouteUnique>(
       path: path,
       coordinator: coordinator,
-      resolver: (route) => StackTransition.material(
-        Builder(builder: (ctx) => route.build(coordinator, ctx)),
-      ),
+      resolver: (route) => StackTransition.material(Builder(builder: (ctx) => route.build(coordinator, ctx))),
     );
   }
 }

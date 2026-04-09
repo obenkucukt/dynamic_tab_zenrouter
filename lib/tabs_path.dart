@@ -30,22 +30,32 @@ class TabsPath<T extends RouteTab> extends StackPath<T>
 
   final Map<T, NavigationPath<RouteUnique>> _tabPaths = {};
 
-  /// Returns the [NavigationPath] for [tab]'s inner navigation.
+  /// Returns the inner [NavigationPath] for [tab].
   ///
-  /// On first access a fresh path is created and seeded with a root route
-  /// produced by the coordinator's URI parser so that the tab content is
-  /// always shown as the bottom-most route in the inner stack.
+  /// For tabs that are [RouteLayoutParent] (static tabs with their own layout),
+  /// the path registered in the coordinator is returned directly — this is what
+  /// enables URL synchronisation and deep linking.
+  ///
+  /// For non-layout tabs (e.g. dynamic [DetailTab]s), a standalone path is
+  /// created on the fly and seeded with the tab's root route.
   NavigationPath<RouteUnique> tabPathFor(T tab) {
+    if (tab is RouteLayoutParent) {
+      return (tab as RouteLayoutParent).resolvePath(coordinator!) as NavigationPath<RouteUnique>;
+    }
+
     return _tabPaths.putIfAbsent(tab, () {
       final coord = coordinator as Coordinator;
-      final path = NavigationPath<RouteUnique>.createWith(coordinator: coord, label: 'tab-inner-${tab.toUri().path}');
+      final path = NavigationPath<RouteUnique>.createWith(
+        coordinator: coord,
+        label: 'tab-inner-${tab.toUri().path}',
+      );
       final rootRoute = coord.parseRouteFromUriSync(tab.toUri());
       path.push(rootRoute);
       return path;
     });
   }
 
-  /// Shortcut – the inner [NavigationPath] of the currently active tab.
+  /// Shortcut — the inner [NavigationPath] of the currently active tab.
   NavigationPath<RouteUnique>? get activeTabPath {
     final route = activeRoute;
     if (route == null) return null;
@@ -79,6 +89,13 @@ class TabsPath<T extends RouteTab> extends StackPath<T>
     } else {
       push(route);
     }
+  }
+
+  @override
+  Future<void> pushOrMoveToTop(T element) async {
+    await super.pushOrMoveToTop(element);
+    final index = stack.indexOf(element);
+    if (index != -1) _activeIndex = index;
   }
 
   @override
@@ -138,13 +155,12 @@ class TabsPath<T extends RouteTab> extends StackPath<T>
     return TabsPathModel([
       for (final route in data['stack'])
         RestorableConverter.deserializeRoute(
-              route,
-              parseRouteFromUri: coord.parseRouteFromUriSync,
-              createLayoutParent: coord.createLayoutParent,
-              decodeLayoutKey: coord.decodeLayoutKey,
-              getRestorableConverter: coord.getRestorableConverter,
-            )
-            as T,
+          route,
+          parseRouteFromUri: coord.parseRouteFromUriSync,
+          createLayoutParent: coord.createLayoutParent,
+          decodeLayoutKey: coord.decodeLayoutKey,
+          getRestorableConverter: coord.getRestorableConverter,
+        ) as T,
     ], data['activeIndex']);
   }
 

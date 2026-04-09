@@ -7,14 +7,27 @@ import 'package:flutter/material.dart';
 import 'package:zenrouter/zenrouter.dart';
 
 // ============================================================================
-// Route Definitions
+// Base Route Types
 // ============================================================================
 
 abstract class AppRoute extends RouteTarget with RouteUnique {}
 
+/// Marker mixin for routes that appear as tabs in the tab bar.
 abstract class TabRoute extends AppRoute with RouteTab {}
 
-/// Main layout with Chrome-style tabs
+/// A tab that also acts as a [RouteLayout], managing its own inner
+/// [NavigationPath].  Sub-routes that set `layout => ThisType` are
+/// automatically pushed onto the correct per-tab path, and URL/deep-linking
+/// is synchronised by the coordinator.
+abstract class TabLayoutRoute extends TabRoute with RouteLayout<AppRoute> {
+  @override
+  Type get layout => ChromeTabLayout;
+}
+
+// ============================================================================
+// Chrome Tab Layout (top-level shell)
+// ============================================================================
+
 class ChromeTabLayout extends AppRoute with RouteLayout<AppRoute> {
   @override
   TabsPath<TabRoute> resolvePath(AppCoordinator coordinator) => coordinator.tabsPath;
@@ -41,13 +54,75 @@ class ChromeTabLayout extends AppRoute with RouteLayout<AppRoute> {
 }
 
 // ============================================================================
-// Tab Routes (appear as tab roots)
+// Per-Tab Layout Routes  (tab bar entry  +  inner NavigationPath owner)
 // ============================================================================
 
-/// Home tab – lists posts that can be opened as sub-routes inside the tab.
-class HomeTab extends TabRoute {
+class HomeTabLayout extends TabLayoutRoute {
+  HomeTabLayout();
+
   @override
-  Type? get layout => ChromeTabLayout;
+  NavigationPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.homeTabPath;
+
+  @override
+  Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.home, size: 16),
+        const SizedBox(width: 8),
+        Text('Home', style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+      ],
+    );
+  }
+}
+
+class AboutTabLayout extends TabLayoutRoute {
+  AboutTabLayout();
+
+  @override
+  NavigationPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.aboutTabPath;
+
+  @override
+  Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.info, size: 16),
+        const SizedBox(width: 8),
+        Text('About', style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+      ],
+    );
+  }
+}
+
+class SettingsTabLayout extends TabLayoutRoute {
+  SettingsTabLayout();
+  @override
+  NavigationPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.settingsTabPath;
+
+  @override
+  Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.settings, size: 16),
+        const SizedBox(width: 8),
+        Text('Settings', style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+      ],
+    );
+  }
+}
+
+// ============================================================================
+// Tab Content Routes  (root page shown inside each tab's NavigationPath)
+// ============================================================================
+
+class HomeTab extends AppRoute {
+  @override
+  Type get layout => HomeTabLayout;
+
+  @override
+  Uri toUri() => Uri.parse('/home');
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
@@ -74,8 +149,7 @@ class HomeTab extends TabRoute {
               title: Text(post.title, style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text('Tap to open detail view for post ${post.id}'),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () =>
-                  coordinator.tabsPath.activeTabPath?.push(PostDetailRoute(postId: post.id, postTitle: post.title)),
+              onTap: () => coordinator.push(PostDetailRoute(postId: post.id, postTitle: post.title)),
             ),
           ),
         ),
@@ -109,122 +183,14 @@ class HomeTab extends TabRoute {
       ],
     );
   }
-
-  @override
-  Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.home, size: 16),
-        const SizedBox(width: 8),
-        Text('Home', style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
-      ],
-    );
-  }
-
-  @override
-  Uri toUri() => Uri.parse('/home');
 }
 
-/// Detail tab with customizable content
-class DetailTab extends TabRoute {
-  DetailTab({required this.id, required this.title});
-
-  final int id;
-  final String title;
+class AboutTab extends AppRoute {
+  @override
+  Type get layout => AboutTabLayout;
 
   @override
-  List<Object?> get props => [id];
-
-  @override
-  Type? get layout => ChromeTabLayout;
-
-  @override
-  Widget build(AppCoordinator coordinator, BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Text(title, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 16),
-        Text('Tab ID: $id', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600])),
-        const SizedBox(height: 32),
-        Card(
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.info_outline, color: Colors.blue[700]),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Tab Information',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildInfoRow(context, 'Created', DateTime.now().toString()),
-                _buildInfoRow(context, 'Type', 'Detail Tab'),
-                _buildInfoRow(context, 'Closeable', 'Yes'),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        ElevatedButton.icon(
-          onPressed: () => coordinator.tabsPath.activeTabPath?.push(DetailSubPage(tabId: id, section: 'stats')),
-          icon: const Icon(Icons.bar_chart),
-          label: const Text('View Statistics'),
-        ),
-        const SizedBox(height: 12),
-        ElevatedButton.icon(
-          onPressed: () => coordinator.tabsPath.activeTabPath?.push(DetailSubPage(tabId: id, section: 'history')),
-          icon: const Icon(Icons.history),
-          label: const Text('View History'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInfoRow(BuildContext context, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              '$label:',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ),
-          Expanded(child: Text(value, style: Theme.of(context).textTheme.bodyMedium)),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
-    return Text(
-      title,
-      style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-    );
-  }
-
-  @override
-  Uri toUri() => Uri.parse('/detail/$id');
-}
-
-/// About tab
-class AboutTab extends TabRoute {
-  @override
-  Type? get layout => ChromeTabLayout;
+  Uri toUri() => Uri.parse('/about');
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
@@ -260,36 +226,21 @@ class AboutTab extends TabRoute {
               title: Text(tech.name, style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text(tech.description),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => coordinator.tabsPath.activeTabPath?.push(
-                TechDetailRoute(name: tech.name, description: tech.description),
-              ),
+              onTap: () => coordinator.push(TechDetailRoute(name: tech.name, description: tech.description)),
             ),
           ),
         ),
       ],
     );
   }
-
-  @override
-  Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.info, size: 16),
-        const SizedBox(width: 8),
-        Text('About', style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
-      ],
-    );
-  }
-
-  @override
-  Uri toUri() => Uri.parse('/about');
 }
 
-/// Settings tab
-class SettingsTab extends TabRoute {
+class SettingsTab extends AppRoute {
   @override
-  Type? get layout => ChromeTabLayout;
+  Type get layout => SettingsTabLayout;
+
+  @override
+  Uri toUri() => Uri.parse('/settings');
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
@@ -322,9 +273,63 @@ class SettingsTab extends TabRoute {
               title: Text(section.title, style: const TextStyle(fontWeight: FontWeight.w600)),
               subtitle: Text(section.description),
               trailing: const Icon(Icons.chevron_right),
-              onTap: () => coordinator.tabsPath.activeTabPath?.push(
-                SettingsSectionRoute(sectionId: section.id, sectionTitle: section.title),
-              ),
+              onTap: () => coordinator.push(SettingsSectionRoute(sectionId: section.id, sectionTitle: section.title)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Dynamic tab — not backed by a per-tab layout, so sub-navigation does not
+/// sync with the browser URL.  Good enough for ephemeral content tabs.
+class DetailTab extends TabRoute {
+  DetailTab({required this.id, required this.title});
+
+  final int id;
+  final String title;
+
+  @override
+  List<Object?> get props => [id];
+
+  @override
+  Type? get layout => ChromeTabLayout;
+
+  @override
+  Uri toUri() => Uri.parse('/detail/$id');
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Text(title, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 16),
+        Text('Tab ID: $id', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600])),
+        const SizedBox(height: 32),
+        Card(
+          elevation: 2,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue[700]),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Tab Information',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _infoRow(context, 'Created', DateTime.now().toString()),
+                _infoRow(context, 'Type', 'Detail Tab'),
+                _infoRow(context, 'Closeable', 'Yes'),
+              ],
             ),
           ),
         ),
@@ -332,20 +337,33 @@ class SettingsTab extends TabRoute {
     );
   }
 
-  @override
-  Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.settings, size: 16),
-        const SizedBox(width: 8),
-        Text('Settings', style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
-      ],
+  Widget _infoRow(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(child: Text(value, style: Theme.of(context).textTheme.bodyMedium)),
+        ],
+      ),
     );
   }
 
   @override
-  Uri toUri() => Uri.parse('/settings');
+  Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
+    return Text(
+      title,
+      style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
 }
 
 /// Index route that redirects to home
@@ -361,10 +379,9 @@ class IndexRoute extends AppRoute with RouteRedirect {
 }
 
 // ============================================================================
-// In-Tab Sub-Routes
+// In-Tab Sub-Routes  (layout getter → correct tab path → URL synced)
 // ============================================================================
 
-/// Sub-route shown when tapping a post inside the Home tab.
 class PostDetailRoute extends AppRoute {
   PostDetailRoute({required this.postId, required this.postTitle});
 
@@ -375,13 +392,16 @@ class PostDetailRoute extends AppRoute {
   List<Object?> get props => [postId];
 
   @override
+  Type get layout => HomeTabLayout;
+
+  @override
   Uri toUri() => Uri.parse('/home/post/$postId');
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Column(
       children: [
-        _InTabNavBar(title: postTitle, onBack: () => coordinator.tabsPath.activeTabPath?.pop()),
+        _InTabNavBar(title: postTitle, onBack: () => coordinator.tryPop()),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),
@@ -406,7 +426,7 @@ class PostDetailRoute extends AppRoute {
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
-                onPressed: () => coordinator.tabsPath.activeTabPath?.push(PostCommentRoute(postId: postId)),
+                onPressed: () => coordinator.push(PostCommentRoute(postId: postId)),
                 icon: const Icon(Icons.comment),
                 label: const Text('View Comments'),
               ),
@@ -418,7 +438,6 @@ class PostDetailRoute extends AppRoute {
   }
 }
 
-/// Second-level sub-route: comments of a post (demonstrates multi-level nesting).
 class PostCommentRoute extends AppRoute {
   PostCommentRoute({required this.postId});
 
@@ -426,6 +445,9 @@ class PostCommentRoute extends AppRoute {
 
   @override
   List<Object?> get props => [postId, 'comments'];
+
+  @override
+  Type get layout => HomeTabLayout;
 
   @override
   Uri toUri() => Uri.parse('/home/post/$postId/comments');
@@ -439,7 +461,7 @@ class PostCommentRoute extends AppRoute {
 
     return Column(
       children: [
-        _InTabNavBar(title: 'Comments — Post $postId', onBack: () => coordinator.tabsPath.activeTabPath?.pop()),
+        _InTabNavBar(title: 'Comments - Post $postId', onBack: () => coordinator.tryPop()),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),
@@ -467,7 +489,6 @@ class PostCommentRoute extends AppRoute {
   }
 }
 
-/// Sub-route shown when tapping a settings section inside the Settings tab.
 class SettingsSectionRoute extends AppRoute {
   SettingsSectionRoute({required this.sectionId, required this.sectionTitle});
 
@@ -478,13 +499,16 @@ class SettingsSectionRoute extends AppRoute {
   List<Object?> get props => [sectionId];
 
   @override
+  Type get layout => SettingsTabLayout;
+
+  @override
   Uri toUri() => Uri.parse('/settings/$sectionId');
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Column(
       children: [
-        _InTabNavBar(title: sectionTitle, onBack: () => coordinator.tabsPath.activeTabPath?.pop()),
+        _InTabNavBar(title: sectionTitle, onBack: () => coordinator.tryPop()),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),
@@ -511,7 +535,6 @@ class SettingsSectionRoute extends AppRoute {
   }
 }
 
-/// Sub-route shown when tapping a technology inside the About tab.
 class TechDetailRoute extends AppRoute {
   TechDetailRoute({required this.name, this.description = ''});
 
@@ -522,13 +545,16 @@ class TechDetailRoute extends AppRoute {
   List<Object?> get props => [name];
 
   @override
+  Type get layout => AboutTabLayout;
+
+  @override
   Uri toUri() => Uri.parse('/about/tech/${name.toLowerCase()}');
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Column(
       children: [
-        _InTabNavBar(title: name, onBack: () => coordinator.tabsPath.activeTabPath?.pop()),
+        _InTabNavBar(title: name, onBack: () => coordinator.tryPop()),
         Expanded(
           child: Center(
             child: Padding(
@@ -543,8 +569,8 @@ class TechDetailRoute extends AppRoute {
                   Text(description, style: Theme.of(context).textTheme.bodyLarge),
                   const SizedBox(height: 32),
                   Text(
-                    'This page lives inside the About tab NavigationPath.\n'
-                    'Press the back arrow or use the browser back button to return.',
+                    'This page lives inside a per-tab NavigationPath.\n'
+                    'The browser URL is kept in sync automatically.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
                   ),
@@ -558,46 +584,10 @@ class TechDetailRoute extends AppRoute {
   }
 }
 
-/// Sub-route for detail tab sub-pages (stats, history, etc.)
-class DetailSubPage extends AppRoute {
-  DetailSubPage({required this.tabId, required this.section});
-
-  final int tabId;
-  final String section;
-
-  @override
-  List<Object?> get props => [tabId, section];
-
-  @override
-  Uri toUri() => Uri.parse('/detail/$tabId/$section');
-
-  @override
-  Widget build(AppCoordinator coordinator, BuildContext context) {
-    return Column(
-      children: [
-        _InTabNavBar(
-          title: '${section[0].toUpperCase()}${section.substring(1)} — Tab $tabId',
-          onBack: () => coordinator.tabsPath.activeTabPath?.pop(),
-        ),
-        Expanded(
-          child: Center(
-            child: Text(
-              '${section.toUpperCase()} content for tab $tabId',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 // ============================================================================
 // Shared Widgets
 // ============================================================================
 
-/// A compact navigation bar placed at the top of in-tab sub-routes so the user
-/// can navigate back without leaving the tab.
 class _InTabNavBar extends StatelessWidget {
   const _InTabNavBar({required this.title, required this.onBack});
 
@@ -629,11 +619,38 @@ class _InTabNavBar extends StatelessWidget {
 // ============================================================================
 
 class AppCoordinator extends Coordinator<AppRoute> {
-  late final tabsPath = TabsPath<TabRoute>.createWith(coordinator: this, label: 'tabs', stack: [HomeTab()])
+  // ---------------------------------------------------------------------------
+  // Per-tab inner NavigationPaths  (pre-seeded with root content)
+  // ---------------------------------------------------------------------------
+
+  late final homeTabPath = NavigationPath<AppRoute>.createWith(coordinator: this, label: 'home-tab', stack: [HomeTab()])
+    ..bindLayout(HomeTabLayout.new);
+
+  late final aboutTabPath = NavigationPath<AppRoute>.createWith(
+    coordinator: this,
+    label: 'about-tab',
+    stack: [AboutTab()],
+  )..bindLayout(AboutTabLayout.new);
+
+  late final settingsTabPath = NavigationPath<AppRoute>.createWith(
+    coordinator: this,
+    label: 'settings-tab',
+    stack: [SettingsTab()],
+  )..bindLayout(SettingsTabLayout.new);
+
+  // ---------------------------------------------------------------------------
+  // Tab strip
+  // ---------------------------------------------------------------------------
+
+  late final tabsPath = TabsPath<TabRoute>.createWith(coordinator: this, label: 'tabs', stack: [HomeTabLayout()])
     ..bindLayout(ChromeTabLayout.new);
 
+  // ---------------------------------------------------------------------------
+  // Coordinator overrides
+  // ---------------------------------------------------------------------------
+
   @override
-  List<StackPath<RouteTarget>> get paths => [...super.paths, tabsPath];
+  List<StackPath<RouteTarget>> get paths => [...super.paths, tabsPath, homeTabPath, aboutTabPath, settingsTabPath];
 
   @override
   FutureOr<AppRoute> parseRouteFromUri(Uri uri) {
@@ -643,7 +660,6 @@ class AppCoordinator extends Coordinator<AppRoute> {
       ['home', 'post', final id] => PostDetailRoute(postId: int.tryParse(id) ?? 0, postTitle: 'Post $id'),
       ['home', 'post', final id, 'comments'] => PostCommentRoute(postId: int.tryParse(id) ?? 0),
       ['detail', final id] => DetailTab(id: int.tryParse(id) ?? 0, title: 'Detail $id'),
-      ['detail', final id, final section] => DetailSubPage(tabId: int.tryParse(id) ?? 0, section: section),
       ['about'] => AboutTab(),
       ['about', 'tech', final name] => TechDetailRoute(name: name),
       ['settings'] => SettingsTab(),
