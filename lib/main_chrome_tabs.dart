@@ -582,7 +582,7 @@ class DetailSectionRoute extends AppRoute {
   Object? get parentLayoutKey => (DetailTabLayout, tabId);
 
   @override
-  Uri toUri() => Uri.parse('/detail/$tabId/$section');
+  Uri toUri() => Uri(path: '/detail/$tabId/$section');
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
@@ -600,7 +600,7 @@ class DetailSectionRoute extends AppRoute {
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
-              Text(
+              SelectableText(
                 'This page lives inside dynamic Tab $tabId.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
               ),
@@ -683,7 +683,7 @@ class DetailNoteRoute extends AppRoute with RouteDeepLink {
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text(
+                    child: SelectableText(
                       'This is the full content of note $noteId inside dynamic tab $tabId.\n\n'
                       'Three levels deep:  Tab $tabId  >  Notes  >  Note $noteId\n\n'
                       'The browser URL reflects the full path.',
