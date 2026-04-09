@@ -429,7 +429,7 @@ class PostDetailRoute extends AppRoute {
   }
 }
 
-class PostCommentRoute extends AppRoute {
+class PostCommentRoute extends AppRoute with RouteDeepLink {
   PostCommentRoute({required this.postId});
 
   final int postId;
@@ -442,6 +442,15 @@ class PostCommentRoute extends AppRoute {
 
   @override
   Uri toUri() => Uri.parse('/home/post/$postId/comments');
+
+  @override
+  DeeplinkStrategy get deeplinkStrategy => DeeplinkStrategy.custom;
+
+  @override
+  Future<void> deeplinkHandler(AppCoordinator coordinator, Uri uri) async {
+    await coordinator.navigate(PostDetailRoute(postId: postId, postTitle: 'Post $postId'));
+    await coordinator.push(this);
+  }
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
@@ -630,7 +639,7 @@ class DetailSectionRoute extends AppRoute {
 }
 
 /// Third-level nesting inside a dynamic tab: Notes → single Note detail.
-class DetailNoteRoute extends AppRoute {
+class DetailNoteRoute extends AppRoute with RouteDeepLink {
   DetailNoteRoute({required this.tabId, required this.noteId});
 
   final int tabId;
@@ -644,6 +653,15 @@ class DetailNoteRoute extends AppRoute {
 
   @override
   Uri toUri() => Uri.parse('/detail/$tabId/notes/$noteId');
+
+  @override
+  DeeplinkStrategy get deeplinkStrategy => DeeplinkStrategy.custom;
+
+  @override
+  Future<void> deeplinkHandler(AppCoordinator coordinator, Uri uri) async {
+    await coordinator.navigate(DetailSectionRoute(tabId: tabId, section: 'notes'));
+    await coordinator.push(this);
+  }
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
