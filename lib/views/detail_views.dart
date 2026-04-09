@@ -2,7 +2,7 @@ part of '../main_chrome_tabs.dart';
 
 /// Root content for a dynamic detail tab.
 class DetailTab extends AppRoute {
-  DetailTab({required this.id});
+  DetailTab({required this.id, super.queries});
 
   final int id;
 
@@ -62,7 +62,7 @@ class DetailTab extends AppRoute {
 /// Uses [parentLayoutKey] with the tab id so the coordinator resolves the
 /// correct [DetailTabLayout] instance and its [NavigationPath].
 class DetailSectionRoute extends AppRoute {
-  DetailSectionRoute({required this.tabId, required this.section});
+  DetailSectionRoute({required this.tabId, required this.section, super.queries});
 
   final int tabId;
   final String section;
@@ -133,7 +133,7 @@ class DetailSectionRoute extends AppRoute {
 
 /// Third-level nesting inside a dynamic tab: Notes -> single Note detail.
 class DetailNoteRoute extends AppRoute with RouteDeepLink {
-  DetailNoteRoute({required this.tabId, required this.noteId});
+  DetailNoteRoute({required this.tabId, required this.noteId, super.queries});
 
   final int tabId;
   final int noteId;

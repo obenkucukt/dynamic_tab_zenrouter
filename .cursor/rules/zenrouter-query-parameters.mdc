@@ -1,0 +1,74 @@
+---
+description: ZenRouter query parameter conventions and one-way bloc communication pattern
+globs: lib/**/*.dart
+alwaysApply: false
+---
+
+# ZenRouter Query Parameters
+
+## Base Setup
+
+All routes extend `AppRoute` which mixes in `RouteQueryParameters`. Every route constructor must forward queries via `{super.queries}`.
+
+```dart
+class MyRoute extends AppRoute {
+  MyRoute({required this.id, super.queries});
+  final String id;
+}
+```
+
+`parseRouteFromUri` must pass `uri.queryParameters` to every route constructor.
+
+## Reading & Updating Queries
+
+- Read: `query('key')` or `queries` getter
+- Update: `updateQueries(coordinator, queries: {...queries, 'key': 'value'})` — this updates `queryNotifier`, syncs the browser URL, and does NOT trigger a full navigation transition
+- URL identity: `identifier` getter appends queries to `toUri()`, so the URL always reflects current query state
+
+## Granular Rebuilds with selectorBuilder
+
+Use `selectorBuilder` instead of `ValueListenableBuilder(valueListenable: queryNotifier)` to rebuild only when a derived value changes:
+
+```dart
+route.selectorBuilder<String?>(
+  selector: (q) => q['filter'],
+  builder: (context, filter) => Text('Filter: $filter'),
+)
+```
+
+## One-Way Bloc Communication (Critical)
+
+Data flow is strictly **route queries → bloc**, never the reverse.
+
+```
+URL  ──parse──>  queryNotifier  ──listener──>  bloc.onFiltersChanged()
+                      │                              │
+                 selectorBuilder              ListenableBuilder
+                 (chips / tags)             (filtered data list)
+```
+
+### Pattern
+
+```dart
+// In StatefulWidget.initState — attach ONE-WAY listener
+route.queryNotifier.addListener(_syncToBloc);
+_syncToBloc(); // initial sync
+
+void _syncToBloc() => bloc.onFiltersChanged(route.queries);
+```
+
+### Rules
+1. The bloc/controller NEVER calls `updateQueries` — only UI event handlers do
+2. `queryNotifier` is the single source of truth for filter state
+3. Bloc reads filters from the listener callback, fetches data, and exposes results
+4. If bloc wrote back to queries, it would create an infinite loop
+
+## Sub-Route Filter Editing Pattern
+
+When a sub-route (e.g. `/filter`) edits the parent's filters:
+
+1. Push the filter route with current queries: `coordinator.push(FilterRoute(queries: queries))`
+2. Filter route uses `updateQueries` on itself for live URL sync as user edits
+3. On save, navigate back: `coordinator.navigate(ParentRoute(queries: route.queries))`
+   - ZenRouter calls `onUpdate` on the existing parent, which copies `queryNotifier.value` from the new instance
+4. On cancel, just `coordinator.tryPop()` — parent keeps its original queries

@@ -1,6 +1,8 @@
 part of '../main_chrome_tabs.dart';
 
 class HomeTab extends AppRoute {
+  HomeTab({super.queries});
+
   @override
   Type get layout => HomeTabLayout;
 
@@ -69,7 +71,7 @@ class HomeTab extends AppRoute {
 }
 
 class PostDetailRoute extends AppRoute {
-  PostDetailRoute({required this.postId, required this.postTitle});
+  PostDetailRoute({required this.postId, required this.postTitle, super.queries});
 
   final int postId;
   final String postTitle;
@@ -123,7 +125,7 @@ class PostDetailRoute extends AppRoute {
 }
 
 class PostCommentRoute extends AppRoute with RouteDeepLink {
-  PostCommentRoute({required this.postId});
+  PostCommentRoute({required this.postId, super.queries});
 
   final int postId;
 

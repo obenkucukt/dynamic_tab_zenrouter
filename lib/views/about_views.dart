@@ -1,6 +1,8 @@
 part of '../main_chrome_tabs.dart';
 
 class AboutTab extends AppRoute {
+  AboutTab({super.queries});
+
   @override
   Type get layout => AboutTabLayout;
 
@@ -44,7 +46,7 @@ class AboutTab extends AppRoute {
 }
 
 class TechDetailRoute extends AppRoute {
-  TechDetailRoute({required this.name, this.description = ''});
+  TechDetailRoute({required this.name, this.description = '', super.queries});
 
   final String name;
   final String description;

@@ -17,15 +17,32 @@ part 'views/app_views.dart';
 // Base Route Types
 // ============================================================================
 
-abstract class AppRoute extends RouteTarget with RouteUnique {}
+abstract class AppRoute extends RouteTarget with RouteUnique, RouteQueryParameters {
+  AppRoute({Map<String, String> queries = const {}})
+    : queryNotifier = ValueNotifier(queries);
 
-abstract class TabRoute extends AppRoute with RouteTab {}
+  @override
+  final ValueNotifier<Map<String, String>> queryNotifier;
+
+  @override
+  Uri get identifier {
+    final uri = toUri();
+    if (queries.isEmpty) return uri;
+    return uri.replace(queryParameters: queries);
+  }
+}
+
+abstract class TabRoute extends AppRoute with RouteTab {
+  TabRoute({super.queries});
+}
 
 /// A tab that also acts as a [RouteLayout], managing its own inner
 /// [NavigationPath].  Sub-routes whose [parentLayoutKey] matches this layout's
 /// [layoutKey] are automatically pushed onto the correct per-tab path, keeping
 /// the browser URL and deep-linking in sync.
 abstract class TabLayoutRoute extends TabRoute with RouteLayout<AppRoute> {
+  TabLayoutRoute({super.queries});
+
   @override
   Type get layout => ChromeTabLayout;
 }
@@ -47,6 +64,8 @@ const _kApps = [
 // ============================================================================
 
 class ChromeTabLayout extends AppRoute with RouteLayout<AppRoute> {
+  ChromeTabLayout({super.queries});
+
   @override
   TabsPath<TabRoute> resolvePath(AppCoordinator coordinator) => coordinator.tabsPath;
 
@@ -141,7 +160,7 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
     if (activeTab == null) return;
     final innerPath = tabPath.tabPathFor(activeTab);
     if (innerPath.stack.isEmpty) return;
-    _updateDisplayedUrl(innerPath.stack.last.toUri());
+    _updateDisplayedUrl(innerPath.stack.last.identifier);
   }
 
   @override
@@ -272,7 +291,7 @@ class SettingsTabLayout extends TabLayoutRoute {
 // ============================================================================
 
 class DetailTabLayout extends TabLayoutRoute {
-  DetailTabLayout({required this.id, this.title});
+  DetailTabLayout({required this.id, this.title, super.queries});
 
   final int id;
   final String? title;
@@ -302,7 +321,7 @@ class DetailTabLayout extends TabLayoutRoute {
 // ============================================================================
 
 class AppTabLayout extends TabLayoutRoute {
-  AppTabLayout({required this.appId, this.appName});
+  AppTabLayout({required this.appId, this.appName, super.queries});
 
   final String appId;
   final String? appName;
@@ -337,6 +356,8 @@ class AppTabLayout extends TabLayoutRoute {
 }
 
 class IndexRoute extends AppRoute with RouteRedirect {
+  IndexRoute({super.queries});
+
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) => const SizedBox.shrink();
 
@@ -746,27 +767,31 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
       nodesOpen.value = true;
     }
 
+    final q = uri.queryParameters;
+
     return switch (uri.pathSegments) {
-      [] => IndexRoute(),
-      ['home'] => HomeTab(),
-      ['home', 'post', final id] => PostDetailRoute(postId: int.tryParse(id) ?? 0, postTitle: 'Post $id'),
-      ['home', 'post', final id, 'comments'] => PostCommentRoute(postId: int.tryParse(id) ?? 0),
-      ['detail', final id] => DetailTab(id: int.tryParse(id) ?? 0),
+      [] => IndexRoute(queries: q),
+      ['home'] => HomeTab(queries: q),
+      ['home', 'post', final id] => PostDetailRoute(postId: int.tryParse(id) ?? 0, postTitle: 'Post $id', queries: q),
+      ['home', 'post', final id, 'comments'] => PostCommentRoute(postId: int.tryParse(id) ?? 0, queries: q),
+      ['detail', final id] => DetailTab(id: int.tryParse(id) ?? 0, queries: q),
       ['detail', final id, 'notes', final noteId] => DetailNoteRoute(
         tabId: int.tryParse(id) ?? 0,
         noteId: int.tryParse(noteId) ?? 0,
+        queries: q,
       ),
-      ['detail', final id, final section] => DetailSectionRoute(tabId: int.tryParse(id) ?? 0, section: section),
-      ['about'] => AboutTab(),
-      ['about', 'tech', final name] => TechDetailRoute(name: name),
-      ['settings'] => SettingsTab(),
-      ['settings', final section] => SettingsSectionRoute(sectionId: section, sectionTitle: section),
-      ['apps'] => HomeTab(),
-      ['apps', final id] => AppDetailTab(appId: id),
-      ['apps', final id, 'description', final type] => AppDescriptionRoute(appId: id, type: type),
-      ['apps', final id, 'settings'] => AppSettingsRoute(appId: id),
-      ['nodes'] => HomeTab(),
-      _ => HomeTab(),
+      ['detail', final id, final section] => DetailSectionRoute(tabId: int.tryParse(id) ?? 0, section: section, queries: q),
+      ['about'] => AboutTab(queries: q),
+      ['about', 'tech', final name] => TechDetailRoute(name: name, queries: q),
+      ['settings'] => SettingsTab(queries: q),
+      ['settings', final section] => SettingsSectionRoute(sectionId: section, sectionTitle: section, queries: q),
+      ['apps'] => HomeTab(queries: q),
+      ['apps', final id] => AppDetailTab(appId: id, queries: q),
+      ['apps', final id, 'filter'] => AppFilterRoute(appId: id, queries: q),
+      ['apps', final id, 'description', final type] => AppDescriptionRoute(appId: id, type: type, queries: q),
+      ['apps', final id, 'settings'] => AppSettingsRoute(appId: id, queries: q),
+      ['nodes'] => HomeTab(queries: q),
+      _ => HomeTab(queries: q),
     };
   }
 }

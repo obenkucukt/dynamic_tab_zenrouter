@@ -1,6 +1,8 @@
 part of '../main_chrome_tabs.dart';
 
 class SettingsTab extends AppRoute {
+  SettingsTab({super.queries});
+
   @override
   Type get layout => SettingsTabLayout;
 
@@ -48,7 +50,7 @@ class SettingsTab extends AppRoute {
 }
 
 class SettingsSectionRoute extends AppRoute {
-  SettingsSectionRoute({required this.sectionId, required this.sectionTitle});
+  SettingsSectionRoute({required this.sectionId, required this.sectionTitle, super.queries});
 
   final String sectionId;
   final String sectionTitle;
