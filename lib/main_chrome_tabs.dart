@@ -5,7 +5,9 @@ import 'package:dynamic_tab_zenrouter/chrome_tabs.dart';
 import 'package:dynamic_tab_zenrouter/panel_path.dart';
 import 'package:dynamic_tab_zenrouter/route_seo.dart';
 import 'package:dynamic_tab_zenrouter/tabs_path.dart';
+import 'package:dynamic_tab_zenrouter/views/apps_sidebar.dart';
 import 'package:flutter/material.dart';
+import 'package:mix/mix.dart';
 import 'package:zenrouter/zenrouter.dart';
 import 'package:zenrouter_devtools/zenrouter_devtools.dart';
 
@@ -75,12 +77,18 @@ class TabsPanelLayout extends AppRoute with RouteLayout<AppRoute> {
 // App Data
 // ============================================================================
 
-const _kApps = [
-  (id: 'notes', name: 'Notes', icon: Icons.note, color: Color(0xFFFFA726)),
-  (id: 'calendar', name: 'Calendar', icon: Icons.calendar_today, color: Color(0xFFEF5350)),
-  (id: 'music', name: 'Music', icon: Icons.music_note, color: Color(0xFFAB47BC)),
-  (id: 'photos', name: 'Photos', icon: Icons.photo, color: Color(0xFF66BB6A)),
-  (id: 'maps', name: 'Maps', icon: Icons.map, color: Color(0xFF26A69A)),
+const kApps = [
+  (id: 'notes', name: 'Notes', subtitle: 'Quick notes & memos', icon: Icons.note, color: Color(0xFFFFA726)),
+  (
+    id: 'calendar',
+    name: 'Calendar',
+    subtitle: 'Events & schedules',
+    icon: Icons.calendar_today,
+    color: Color(0xFFEF5350),
+  ),
+  (id: 'music', name: 'Music', subtitle: 'Songs & playlists', icon: Icons.music_note, color: Color(0xFFAB47BC)),
+  (id: 'photos', name: 'Photos', subtitle: 'Albums & memories', icon: Icons.photo, color: Color(0xFF66BB6A)),
+  (id: 'maps', name: 'Maps', subtitle: 'Navigation & places', icon: Icons.map, color: Color(0xFF26A69A)),
 ];
 
 // ============================================================================
@@ -185,7 +193,7 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
     Color? appBarForeground;
     final activeTab = widget.coordinator.tabsPath.activeRoute;
     if (activeTab is AppTabLayout) {
-      final appData = _kApps.where((a) => a.id == activeTab.appId).firstOrNull;
+      final appData = kApps.where((a) => a.id == activeTab.appId).firstOrNull;
       if (appData != null) {
         appBarColor = appData.color;
         appBarForeground = appData.color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
@@ -193,7 +201,7 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
     }
 
     Color borderFor(_ActivePanel panel) => active == panel ? Colors.blue : borderColor;
-    double widthFor(_ActivePanel panel) => active == panel ? 2.5 : 1;
+    double widthFor(_ActivePanel panel) => 1;
 
     return Scaffold(
       appBar: AppBar(
@@ -212,13 +220,17 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
             child: MouseRegion(
               onEnter: (_) => _onPanelEnter(_ActivePanel.apps),
               onExit: (_) => _onPanelExit(),
-              child: Container(
-                width: 220,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
                 padding: const EdgeInsets.all(2),
                 margin: const EdgeInsets.all(2),
-                decoration: BoxDecoration(
+                decoration: ShapeDecoration(
+                  shape: RoundedSuperellipseBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(16)),
+                    side: BorderSide(color: borderFor(_ActivePanel.apps), width: widthFor(_ActivePanel.apps)),
+                  ),
                   color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                  border: Border.all(color: borderFor(_ActivePanel.apps), width: widthFor(_ActivePanel.apps)),
                 ),
                 child: _buildPanelContent(AppsLayout()),
               ),
@@ -234,12 +246,17 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                     child: MouseRegion(
                       onEnter: (_) => _onPanelEnter(_ActivePanel.nodes),
                       onExit: (_) => _onPanelExit(),
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
                         padding: const EdgeInsets.all(2),
                         margin: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
+                        decoration: ShapeDecoration(
+                          shape: RoundedSuperellipseBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                            side: BorderSide(color: borderFor(_ActivePanel.nodes), width: widthFor(_ActivePanel.nodes)),
+                          ),
                           color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                          border: Border.all(color: borderFor(_ActivePanel.nodes), width: widthFor(_ActivePanel.nodes)),
                         ),
                         child: _buildPanelContent(NodesLayout()),
                       ),
@@ -256,11 +273,17 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                     onTap: () => _onPanelTap(_ActivePanel.tabs),
                     child: MouseRegion(
                       onEnter: (_) => _onPanelEnter(_ActivePanel.tabs),
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
                         padding: const EdgeInsets.all(2),
                         margin: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: borderFor(_ActivePanel.tabs), width: widthFor(_ActivePanel.tabs)),
+                        decoration: ShapeDecoration(
+                          shape: RoundedSuperellipseBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(16)),
+                            side: BorderSide(color: borderFor(_ActivePanel.tabs), width: widthFor(_ActivePanel.tabs)),
+                          ),
+                          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                         ),
                         child: _buildPanelContent(TabsPanelLayout()),
                       ),
@@ -277,15 +300,20 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                           child: MouseRegion(
                             onEnter: (_) => _onPanelEnter(_ActivePanel.logs),
                             onExit: (_) => _onPanelExit(),
-                            child: Container(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
                               padding: const EdgeInsets.all(2),
                               margin: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                                border: Border.all(
-                                  color: borderFor(_ActivePanel.logs),
-                                  width: widthFor(_ActivePanel.logs),
+                              decoration: ShapeDecoration(
+                                shape: RoundedSuperellipseBorder(
+                                  borderRadius: BorderRadius.all(Radius.circular(16)),
+                                  side: BorderSide(
+                                    color: borderFor(_ActivePanel.logs),
+                                    width: widthFor(_ActivePanel.logs),
+                                  ),
                                 ),
+                                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                               ),
                               child: _buildPanelContent(LogsLayout()),
                             ),
@@ -423,10 +451,10 @@ class AppTabLayout extends TabLayoutRoute {
   final String? appName;
 
   @override
-  String get title => appName ?? _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+  String get title => appName ?? kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
 
   @override
-  IconData? get icon => _kApps.where((a) => a.id == appId).firstOrNull?.icon ?? Icons.apps;
+  IconData? get icon => kApps.where((a) => a.id == appId).firstOrNull?.icon ?? Icons.apps;
 
   @override
   List<Object?> get props => [appId];
@@ -439,8 +467,8 @@ class AppTabLayout extends TabLayoutRoute {
 
   @override
   Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
-    final name = appName ?? _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
-    final icon = _kApps.where((a) => a.id == appId).firstOrNull?.icon ?? Icons.apps;
+    final name = appName ?? kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+    final icon = kApps.where((a) => a.id == appId).firstOrNull?.icon ?? Icons.apps;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -576,160 +604,6 @@ class _InTabNavBar extends StatelessWidget {
 }
 
 // ============================================================================
-// Apps Sidebar
-// ============================================================================
-
-class _AppsSidebar extends StatefulWidget {
-  const _AppsSidebar({required this.coordinator});
-
-  final AppCoordinator coordinator;
-
-  @override
-  State<_AppsSidebar> createState() => _AppsSidebarState();
-}
-
-class _AppsSidebarState extends State<_AppsSidebar> {
-  @override
-  void initState() {
-    super.initState();
-    widget.coordinator.tabsPath.addListener(_onTabsChanged);
-  }
-
-  @override
-  void dispose() {
-    widget.coordinator.tabsPath.removeListener(_onTabsChanged);
-    super.dispose();
-  }
-
-  void _onTabsChanged() => setState(() {});
-
-  @override
-  Widget build(BuildContext context) {
-    debugPrint('AppsSidebar build');
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeTab = widget.coordinator.tabsPath.activeRoute;
-    String? activeAppId;
-    if (activeTab is AppTabLayout) {
-      activeAppId = activeTab.appId;
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Icon(Icons.apps, size: 20, color: isDark ? Colors.white70 : Colors.grey[700]),
-              const SizedBox(width: 8),
-              Text('Apps', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ),
-        Divider(height: 1, color: isDark ? const Color(0xFF3C3C3C) : const Color(0xFFE0E0E0)),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            children: _kApps.map((app) {
-              return _AppSidebarItem(
-                appId: app.id,
-                appName: app.name,
-                icon: app.icon,
-                isActive: app.id == activeAppId,
-                isDark: isDark,
-                color: app.color,
-                onTap: () => widget.coordinator.navigate(AppShortDescRoute(appId: app.id)),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AppSidebarItem extends StatefulWidget {
-  const _AppSidebarItem({
-    required this.appId,
-    required this.appName,
-    required this.icon,
-    required this.isActive,
-    required this.isDark,
-    required this.onTap,
-    required this.color,
-  });
-
-  final String appId;
-  final String appName;
-  final IconData icon;
-  final bool isActive;
-  final bool isDark;
-  final VoidCallback onTap;
-  final Color color;
-
-  @override
-  State<_AppSidebarItem> createState() => _AppSidebarItemState();
-}
-
-class _AppSidebarItemState extends State<_AppSidebarItem> {
-  bool _isHovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final activeColor = widget.isDark ? Colors.blue[700]! : Colors.blue[50]!;
-    final hoverColor = widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFF0F0F0);
-    final bgColor = widget.isActive
-        ? activeColor
-        : _isHovered
-        ? hoverColor
-        : Colors.transparent;
-    final textColor = widget.isActive
-        ? (widget.isDark ? Colors.blue[200]! : Colors.blue[800]!)
-        : (widget.isDark ? Colors.white : Colors.black87);
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(8),
-            border: widget.isActive ? Border.all(color: Colors.blue, width: 1.5) : null,
-          ),
-          child: Row(
-            children: [
-              Icon(widget.icon, size: 20, color: widget.color),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  widget.appName,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.normal,
-                    color: textColor,
-                  ),
-                ),
-              ),
-              if (widget.isActive)
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(color: Colors.blue, shape: BoxShape.circle),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
 // Nodes Panel
 // ============================================================================
 
@@ -755,29 +629,34 @@ class _NodesPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              Icon(Icons.account_tree, size: 20, color: isDark ? Colors.white70 : Colors.grey[700]),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Nodes',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                ),
+        RowBox(
+          style: FlexBoxStyler(),
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: SizedBox.square(
+                dimension: 36,
+                child: StyledIcon(icon: Icons.account_tree, style: IconStyler().size(20).color(Colors.grey[700]!)),
               ),
-              GestureDetector(
-                onTap: () => coordinator.panelPath.remove(NodesLayout()),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: Icon(Icons.close, size: 18, color: isDark ? Colors.white54 : Colors.grey[500]),
-                ),
+            ),
+            Box(
+              style: BoxStyler().wrap(WidgetModifierConfig.flexible(fit: FlexFit.tight)),
+              child: Text(
+                'Nodes',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.clip,
               ),
-            ],
-          ),
+            ),
+            IconButton(
+              onPressed: () {
+                coordinator.panelPath.remove(NodesLayout());
+              },
+              icon: const Icon(Icons.close, size: 20),
+            ),
+          ],
         ),
-        Divider(height: 1, color: isDark ? const Color(0xFF3C3C3C) : const Color(0xFFE0E0E0)),
+        Box(style: BoxStyler().height(1).color(const Color(0xFFE0E0E0))),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1033,7 +912,7 @@ class AppsRoute extends AppRoute {
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
-    return _AppsSidebar(coordinator: coordinator);
+    return AppsSidebar(coordinator: coordinator);
   }
 }
 
@@ -1053,9 +932,7 @@ class NodesRoute extends AppRoute {
   Uri toUri() => Uri.parse('/nodes');
 
   @override
-  Widget build(AppCoordinator coordinator, BuildContext context) {
-    return _NodesPanel(coordinator: coordinator);
-  }
+  Widget build(AppCoordinator coordinator, BuildContext context) => _NodesPanel(coordinator: coordinator);
 }
 
 class NodeCreateRoute extends AppRoute {
@@ -1075,97 +952,96 @@ class NodeCreateRoute extends AppRoute {
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          height: 44,
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF252525) : const Color(0xFFF5F5F5),
-            border: Border(bottom: BorderSide(color: isDark ? const Color(0xFF3C3C3C) : const Color(0xFFE0E0E0))),
-          ),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: () => coordinator.nodesPath.pop(),
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: const SizedBox(width: 44, height: 44, child: Center(child: Icon(Icons.arrow_back, size: 18))),
-                ),
-              ),
-              Text('Create Node', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Material(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F5),
+              border: Border(bottom: BorderSide(color: const Color(0xFFE0E0E0))),
+            ),
+            child: Row(
               children: [
-                Text(
-                  'Node Name',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white70 : Colors.grey[700],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                SizedBox(
-                  height: 36,
-                  child: TextField(
-                    style: const TextStyle(fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: 'Enter node name...',
-                      hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white30 : Colors.grey[400]),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
-                      isDense: true,
+                GestureDetector(
+                  onTap: () => coordinator.nodesPath.pop(),
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: const SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Center(child: Icon(Icons.arrow_back, size: 18)),
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
                 Text(
-                  'Type',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white70 : Colors.grey[700],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: ['Input', 'Transform', 'Filter', 'Output'].map((type) {
-                    return Chip(
-                      label: Text(type, style: const TextStyle(fontSize: 12)),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                    );
-                  }).toList(),
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  height: 34,
-                  child: ElevatedButton.icon(
-                    onPressed: () => coordinator.nodesPath.pop(),
-                    icon: const Icon(Icons.check, size: 16),
-                    label: const Text('Create', style: TextStyle(fontSize: 13)),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                    ),
-                  ),
+                  'Create Node',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ],
             ),
           ),
-        ),
-      ],
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Node Name',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    height: 36,
+                    child: TextField(
+                      style: const TextStyle(fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: 'Enter node name...',
+                        hintStyle: TextStyle(fontSize: 13, color: Colors.grey[400]),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Type',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: ['Input', 'Transform', 'Filter', 'Output'].map((type) {
+                      return Chip(
+                        label: Text(type, style: const TextStyle(fontSize: 12)),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      );
+                    }).toList(),
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 34,
+                    child: ElevatedButton.icon(
+                      onPressed: () => coordinator.nodesPath.pop(),
+                      icon: const Icon(Icons.check, size: 16),
+                      label: const Text('Create', style: TextStyle(fontSize: 13)),
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

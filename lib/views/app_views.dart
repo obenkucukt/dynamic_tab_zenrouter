@@ -10,10 +10,10 @@ class AppDetailLayout extends AppRoute with RouteLayout<AppRoute> {
   final String appId;
 
   @override
-  String get title => _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+  String get title => kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
 
   @override
-  IconData? get icon => _kApps.where((a) => a.id == appId).firstOrNull?.icon ?? Icons.apps;
+  IconData? get icon => kApps.where((a) => a.id == appId).firstOrNull?.icon ?? Icons.apps;
 
   @override
   List<Object?> get props => [appId];
@@ -44,8 +44,8 @@ class _AppDetailLayoutBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appName = _kApps.where((a) => a.id == route.appId).firstOrNull?.name ?? route.appId;
-    final appIcon = _kApps.where((a) => a.id == route.appId).firstOrNull?.icon ?? Icons.apps;
+    final appName = kApps.where((a) => a.id == route.appId).firstOrNull?.name ?? route.appId;
+    final appIcon = kApps.where((a) => a.id == route.appId).firstOrNull?.icon ?? Icons.apps;
     final path = coordinator.appDrawerPath(route.appId);
 
     return Scaffold(
@@ -143,7 +143,7 @@ class AppShortDescRoute extends AppRoute {
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
-    final appName = _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+    final appName = kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -196,7 +196,7 @@ class AppLongDescRoute extends AppRoute {
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
-    final appName = _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+    final appName = kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -257,7 +257,7 @@ class AppSettingsRoute extends AppRoute {
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
-    final appName = _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+    final appName = kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
 
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -338,7 +338,7 @@ class _AppFilterBodyState extends State<_AppFilterBody> {
 
   @override
   Widget build(BuildContext context) {
-    final appName = _kApps.where((a) => a.id == widget.route.appId).firstOrNull?.name ?? widget.route.appId;
+    final appName = kApps.where((a) => a.id == widget.route.appId).firstOrNull?.name ?? widget.route.appId;
 
     return Column(
       children: [
