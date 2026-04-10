@@ -187,6 +187,9 @@ enum _ActivePanel { apps, nodes, tabs, logs }
 
 class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
   _ActivePanel _hoveredPanel = _ActivePanel.tabs;
+  late final _appsSidebar = _AppsSidebar(coordinator: widget.coordinator);
+  late final _nodesPanel = _NodesPanel(coordinator: widget.coordinator);
+  late final _logsPanel = _LogsPanel(coordinator: widget.coordinator);
 
   @override
   void initState() {
@@ -277,7 +280,7 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
               color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               border: Border.all(color: borderFor(_ActivePanel.apps), width: widthFor(_ActivePanel.apps)),
             ),
-            child: _AppsSidebar(coordinator: widget.coordinator),
+            child: _appsSidebar,
           ),
         ),
         AnimatedContainer(
@@ -295,7 +298,7 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                       color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                       border: Border.all(color: borderFor(_ActivePanel.nodes), width: widthFor(_ActivePanel.nodes)),
                     ),
-                    child: _NodesPanel(coordinator: widget.coordinator),
+                    child: _nodesPanel,
                   ),
                 )
               : const SizedBox.shrink(),
@@ -332,7 +335,7 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                             color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                             border: Border.all(color: borderFor(_ActivePanel.logs), width: widthFor(_ActivePanel.logs)),
                           ),
-                          child: _LogsPanel(coordinator: widget.coordinator),
+                          child: _logsPanel,
                         ),
                       )
                     : const SizedBox.shrink(),
