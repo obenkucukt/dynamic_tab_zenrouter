@@ -1,4 +1,14 @@
-part of '../main_chrome_tabs.dart';
+import 'dart:math';
+
+import 'package:dynamic_tab_zenrouter/app_coordinator.dart';
+import 'package:dynamic_tab_zenrouter/main_chrome_tabs.dart';
+import 'package:dynamic_tab_zenrouter/views/about_views.dart';
+import 'package:dynamic_tab_zenrouter/views/detail_views.dart';
+import 'package:dynamic_tab_zenrouter/views/nodes_view.dart';
+import 'package:dynamic_tab_zenrouter/views/settings_views.dart';
+import 'package:dynamic_tab_zenrouter/widgets/app_back_button.dart';
+import 'package:flutter/material.dart';
+import 'package:zenrouter/zenrouter.dart';
 
 class HomeTab extends AppRoute {
   HomeTab({super.queries});
@@ -106,7 +116,7 @@ class PostDetailRoute extends AppRoute {
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Column(
       children: [
-        _InTabNavBar(title: postTitle, coordinator: coordinator),
+        InTabNavBar(title: postTitle, coordinator: coordinator),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),
@@ -176,7 +186,7 @@ class PostCommentRoute extends AppRoute with RouteDeepLink {
 
     return Column(
       children: [
-        _InTabNavBar(title: 'Comments - Post $postId', coordinator: coordinator),
+        InTabNavBar(title: 'Comments - Post $postId', coordinator: coordinator),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),

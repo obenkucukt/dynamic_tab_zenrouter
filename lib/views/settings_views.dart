@@ -1,4 +1,7 @@
-part of '../main_chrome_tabs.dart';
+import 'package:dynamic_tab_zenrouter/app_coordinator.dart';
+import 'package:dynamic_tab_zenrouter/main_chrome_tabs.dart';
+import 'package:dynamic_tab_zenrouter/widgets/app_back_button.dart';
+import 'package:flutter/material.dart';
 
 class SettingsTab extends AppRoute {
   SettingsTab({super.queries});
@@ -80,7 +83,7 @@ class SettingsSectionRoute extends AppRoute {
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Column(
       children: [
-        _InTabNavBar(title: sectionTitle, coordinator: coordinator),
+        InTabNavBar(title: sectionTitle, coordinator: coordinator),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),

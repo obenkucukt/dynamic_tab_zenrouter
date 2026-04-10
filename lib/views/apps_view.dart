@@ -2,26 +2,63 @@
 // Apps Sidebar
 // ============================================================================
 
+import 'package:dynamic_tab_zenrouter/app_coordinator.dart';
 import 'package:dynamic_tab_zenrouter/main_chrome_tabs.dart';
+import 'package:dynamic_tab_zenrouter/views/app_detail_views.dart';
 import 'package:flutter/material.dart';
 import 'package:mix/mix.dart';
 import 'package:motor/motor.dart';
 import 'package:oref/oref.dart';
 
+const kApps = [
+  (id: 'notes', name: 'Notes', subtitle: 'Quick notes & memos', icon: Icons.note, color: Color(0xFFFFA726)),
+  (
+    id: 'calendar',
+    name: 'Calendar',
+    subtitle: 'Events & schedules',
+    icon: Icons.calendar_today,
+    color: Color(0xFFEF5350),
+  ),
+  (id: 'music', name: 'Music', subtitle: 'Songs & playlists', icon: Icons.music_note, color: Color(0xFFAB47BC)),
+  (id: 'photos', name: 'Photos', subtitle: 'Albums & memories', icon: Icons.photo, color: Color(0xFF66BB6A)),
+  (id: 'maps', name: 'Maps', subtitle: 'Navigation & places', icon: Icons.map, color: Color(0xFF26A69A)),
+];
+
 // ============================================================================
 // AppsSidebar
 // ============================================================================
 
-class AppsSidebar extends StatefulWidget {
-  const AppsSidebar({required this.coordinator, super.key});
+class AppsRoute extends AppRoute {
+  AppsRoute({super.queries});
+
+  @override
+  String get title => 'Apps';
+
+  @override
+  IconData? get icon => Icons.apps;
+
+  @override
+  Type get layout => AppsLayout;
+
+  @override
+  Uri toUri() => Uri.parse('/apps');
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    return AppsView(coordinator: coordinator);
+  }
+}
+
+class AppsView extends StatefulWidget {
+  const AppsView({required this.coordinator, super.key});
 
   final AppCoordinator coordinator;
 
   @override
-  State<AppsSidebar> createState() => _AppsSidebarState();
+  State<AppsView> createState() => _AppsViewState();
 }
 
-class _AppsSidebarState extends State<AppsSidebar> {
+class _AppsViewState extends State<AppsView> {
   static const _expandedWidth = 220.0;
   static const _collapsedWidth = 56.0;
 

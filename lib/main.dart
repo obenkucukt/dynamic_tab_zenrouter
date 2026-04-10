@@ -1,4 +1,4 @@
-import 'package:dynamic_tab_zenrouter/main_chrome_tabs.dart';
+import 'package:dynamic_tab_zenrouter/app_coordinator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';

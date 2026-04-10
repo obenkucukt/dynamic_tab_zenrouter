@@ -1,4 +1,8 @@
-part of '../main_chrome_tabs.dart';
+import 'package:dynamic_tab_zenrouter/app_coordinator.dart';
+import 'package:dynamic_tab_zenrouter/main_chrome_tabs.dart';
+import 'package:dynamic_tab_zenrouter/widgets/app_back_button.dart';
+import 'package:flutter/material.dart';
+import 'package:zenrouter/zenrouter.dart';
 
 /// Root content for a dynamic detail tab.
 class DetailTab extends AppRoute {
@@ -98,7 +102,7 @@ class DetailSectionRoute extends AppRoute {
 
     return Column(
       children: [
-        _InTabNavBar(title: '$sectionTitle - Tab $tabId', coordinator: coordinator),
+        InTabNavBar(title: '$sectionTitle - Tab $tabId', coordinator: coordinator),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),
@@ -176,7 +180,7 @@ class DetailNoteRoute extends AppRoute with RouteDeepLink {
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Column(
       children: [
-        _InTabNavBar(title: 'Note $noteId - Tab $tabId', coordinator: coordinator),
+        InTabNavBar(title: 'Note $noteId - Tab $tabId', coordinator: coordinator),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(24),

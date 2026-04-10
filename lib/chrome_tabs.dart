@@ -17,7 +17,6 @@ class ChromeTabs<T extends RouteTab> extends StatefulWidget {
 
 class _ChromeTabsState<T extends RouteTab> extends State<ChromeTabs<T>> {
   final ScrollController _scrollController = ScrollController();
-  bool _isGridView = false;
 
   @override
   void initState() {
@@ -34,17 +33,11 @@ class _ChromeTabsState<T extends RouteTab> extends State<ChromeTabs<T>> {
 
   void _onPathChanged() => setState(() {});
 
-  void _toggleView() => setState(() => _isGridView = !_isGridView);
-
-  void _activateTabFromGrid(int index) {
-    widget.path.goToIndexed(index);
-    setState(() {
-      _isGridView = false;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
+    final isGridView = signal<bool>(context, false);
+    void toggleView() => isGridView.set(!isGridView());
+
     return Column(
       children: [
         Container(
@@ -59,7 +52,11 @@ class _ChromeTabsState<T extends RouteTab> extends State<ChromeTabs<T>> {
           child: Row(
             children: [
               // Grid view toggle button
-              _GridViewToggleButton(isGridView: _isGridView, onPressed: _toggleView),
+              SignalBuilder(
+                builder: (context) {
+                  return _GridViewToggleButton(isGridView: isGridView(), onPressed: toggleView);
+                },
+              ),
               Expanded(
                 child: ListView.builder(
                   controller: _scrollController,
@@ -79,29 +76,36 @@ class _ChromeTabsState<T extends RouteTab> extends State<ChromeTabs<T>> {
                   },
                 ),
               ),
-              if (widget.onNewTab != null) _NewTabButton(onPressed: widget.onNewTab!),
+              if (widget.onNewTab case final VoidCallback onTap) _NewTabButton(onPressed: onTap),
             ],
           ),
         ),
-        Expanded(
-          child: _isGridView
-              ? _GridView(
-                  coordinator: widget.coordinator,
-                  path: widget.path,
-                  onTabTap: _activateTabFromGrid,
-                  onTabClose: (route) => widget.path.remove(route),
-                )
-              : Container(
-                  color: Colors.white,
-                  child: switch (widget.path.activeRoute) {
-                    null => const Center(child: Text('No tab selected')),
-                    final tab => _TabContentStack(
-                      key: ValueKey(tab),
+        SignalBuilder(
+          builder: (context) {
+            return Expanded(
+              child: isGridView()
+                  ? _GridView(
                       coordinator: widget.coordinator,
-                      path: widget.path.tabPathFor(tab),
+                      path: widget.path,
+                      onTabTap: (index) {
+                        widget.path.goToIndexed(index);
+                        isGridView.set(false);
+                      },
+                      onTabClose: (route) => widget.path.remove(route),
+                    )
+                  : Container(
+                      color: Colors.white,
+                      child: switch (widget.path.activeRoute) {
+                        null => const Center(child: Text('No tab selected')),
+                        final tab => _TabContentStack(
+                          key: ValueKey(tab),
+                          coordinator: widget.coordinator,
+                          path: widget.path.tabPathFor(tab),
+                        ),
+                      },
                     ),
-                  },
-                ),
+            );
+          },
         ),
       ],
     );
