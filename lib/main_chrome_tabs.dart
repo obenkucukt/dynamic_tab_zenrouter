@@ -3,94 +3,17 @@ import 'dart:math';
 
 import 'package:dynamic_tab_zenrouter/chrome_tabs.dart';
 import 'package:dynamic_tab_zenrouter/panel_path.dart';
+import 'package:dynamic_tab_zenrouter/route_seo.dart';
 import 'package:dynamic_tab_zenrouter/tabs_path.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:zenrouter/zenrouter.dart';
 import 'package:zenrouter_devtools/zenrouter_devtools.dart';
-import 'package:meta_seo/meta_seo.dart';
 
 part 'views/home_views.dart';
 part 'views/about_views.dart';
 part 'views/settings_views.dart';
 part 'views/detail_views.dart';
 part 'views/app_views.dart';
-
-// ============================================================================
-// SEO Mixin
-// ============================================================================
-
-mixin RouteSeo on RouteUnique {
-  String get title;
-  IconData? get icon => null;
-  // String get description;
-  // String get keywords;
-  // // Optional meta tags with defaults
-  // String get author => 'Dai Duong';
-  // String? get ogImage => null; // URL to social media preview image
-  // String get ogType => 'website';
-  // TwitterCard? get twitterCard => TwitterCard.summaryLargeImage;
-  // String? get twitterSite => null; // e.g., '@yourusername'
-  // String? get canonicalUrl => null; // Canonical URL for this page
-  // String get language => 'en';
-  // String? get robots => null; // e.g., 'index, follow'
-
-  final meta = MetaSEO();
-
-  @override
-  void onUpdate(covariant RouteTarget newRoute) {
-    super.onUpdate(newRoute);
-    buildSeo();
-  }
-
-  @override
-  Widget build(covariant Coordinator<RouteUnique> coordinator, BuildContext context) {
-    buildSeo();
-    return const SizedBox.shrink();
-  }
-
-  void buildSeo() {
-    // Add MetaSEO just into Web platform condition
-    if (kIsWeb) {
-      // Basic meta tags
-      // meta.author(author: author);
-      // meta.description(description: description);
-      // meta.keywords(keywords: keywords);
-      // Open Graph meta tags (for Facebook, LinkedIn, etc.)
-      _setWebTitle(title);
-      // meta.ogTitle(ogTitle: title);
-      // meta.ogDescription(ogDescription: description);
-      // if (ogImage != null) {
-      //   meta.ogImage(ogImage: ogImage!);
-      // }
-      // // Twitter Card meta tags
-      // if (twitterCard != null) {
-      //   meta.twitterCard(twitterCard: twitterCard!);
-      // }
-      // meta.twitterTitle(twitterTitle: title);
-      // meta.twitterDescription(twitterDescription: description);
-      // if (ogImage != null) {
-      //   meta.twitterImage(twitterImage: ogImage!);
-      // }
-      // if (twitterSite != null) {
-      //   // Note: You may need to add this manually if MetaSEO doesn't support it
-      //   // or use meta.config() for custom tags
-      // }
-      // // Additional SEO tags
-      // if (robots != null) {
-      //   // Use meta.config() for custom tags
-      //   meta.robots(robotsName: RobotsName.robots, content: robots!);
-      // }
-    }
-  }
-
-  void _setWebTitle(String title) {
-    SystemChrome.setApplicationSwitcherDescription(
-      ApplicationSwitcherDescription(label: '$title — Chrome Tabs Demo', primaryColor: 0xFF2196F3),
-    );
-  }
-}
 
 // ============================================================================
 // Base Route Types
@@ -153,11 +76,11 @@ class TabsPanelLayout extends AppRoute with RouteLayout<AppRoute> {
 // ============================================================================
 
 const _kApps = [
-  (id: 'notes', name: 'Notes', icon: Icons.note),
-  (id: 'calendar', name: 'Calendar', icon: Icons.calendar_today),
-  (id: 'music', name: 'Music', icon: Icons.music_note),
-  (id: 'photos', name: 'Photos', icon: Icons.photo),
-  (id: 'maps', name: 'Maps', icon: Icons.map),
+  (id: 'notes', name: 'Notes', icon: Icons.note, color: Color(0xFFFFA726)),
+  (id: 'calendar', name: 'Calendar', icon: Icons.calendar_today, color: Color(0xFFEF5350)),
+  (id: 'music', name: 'Music', icon: Icons.music_note, color: Color(0xFFAB47BC)),
+  (id: 'photos', name: 'Photos', icon: Icons.photo, color: Color(0xFF66BB6A)),
+  (id: 'maps', name: 'Maps', icon: Icons.map, color: Color(0xFF26A69A)),
 ];
 
 // ============================================================================
@@ -178,10 +101,7 @@ class ChromeTabLayout extends AppRoute with RouteLayout<AppRoute> {
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Chrome Tabs Demo'), centerTitle: false, elevation: 0),
-      body: _ChromeTabLayoutBody(coordinator: coordinator),
-    );
+    return _ChromeTabLayoutBody(coordinator: coordinator);
   }
 }
 
@@ -228,7 +148,18 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
   }
 
   void _onPanelEnter(_ActivePanel panel) {
+    if (_hoveredPanel == panel) return;
     _hoveredPanel = panel;
+    setState(() {});
+  }
+
+  void _onPanelExit() {
+    if (_hoveredPanel == _ActivePanel.tabs) return;
+    _hoveredPanel = _ActivePanel.tabs;
+    setState(() {});
+  }
+
+  void _onPanelTap(_ActivePanel panel) {
     final layout = switch (panel) {
       _ActivePanel.apps => AppsLayout(),
       _ActivePanel.nodes => NodesLayout(),
@@ -236,12 +167,6 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
       _ActivePanel.logs => LogsLayout(),
     };
     widget.coordinator.panelPath.focusPanel(layout);
-    setState(() {});
-  }
-
-  void _onPanelExit() {
-    _hoveredPanel = _ActivePanel.tabs;
-    setState(() {});
   }
 
   Widget _buildPanelContent(RouteLayout<AppRoute> layout) {
@@ -256,89 +181,124 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
     final nodesOpen = widget.coordinator.panelPath.isPanelOpen(NodesLayout());
     final logsOpen = widget.coordinator.panelPath.isPanelOpen(LogsLayout());
 
+    Color? appBarColor;
+    Color? appBarForeground;
+    final activeTab = widget.coordinator.tabsPath.activeRoute;
+    if (activeTab is AppTabLayout) {
+      final appData = _kApps.where((a) => a.id == activeTab.appId).firstOrNull;
+      if (appData != null) {
+        appBarColor = appData.color;
+        appBarForeground = appData.color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+      }
+    }
+
     Color borderFor(_ActivePanel panel) => active == panel ? Colors.blue : borderColor;
     double widthFor(_ActivePanel panel) => active == panel ? 2.5 : 1;
 
-    return Row(
-      spacing: 2,
-      children: [
-        const SizedBox(width: 2),
-        MouseRegion(
-          onEnter: (_) => _onPanelEnter(_ActivePanel.apps),
-          onExit: (_) => _onPanelExit(),
-          child: Container(
-            width: 220,
-            padding: const EdgeInsets.all(2),
-            margin: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-              border: Border.all(color: borderFor(_ActivePanel.apps), width: widthFor(_ActivePanel.apps)),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Chrome Tabs Demo'),
+        centerTitle: false,
+        elevation: 0,
+        backgroundColor: appBarColor,
+        foregroundColor: appBarForeground,
+      ),
+      body: Row(
+        spacing: 2,
+        children: [
+          const SizedBox(width: 2),
+          GestureDetector(
+            onTap: () => _onPanelTap(_ActivePanel.apps),
+            child: MouseRegion(
+              onEnter: (_) => _onPanelEnter(_ActivePanel.apps),
+              onExit: (_) => _onPanelExit(),
+              child: Container(
+                width: 220,
+                padding: const EdgeInsets.all(2),
+                margin: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  border: Border.all(color: borderFor(_ActivePanel.apps), width: widthFor(_ActivePanel.apps)),
+                ),
+                child: _buildPanelContent(AppsLayout()),
+              ),
             ),
-            child: _buildPanelContent(AppsLayout()),
           ),
-        ),
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-          width: nodesOpen ? 220 : 0,
-          child: nodesOpen
-              ? MouseRegion(
-                  onEnter: (_) => _onPanelEnter(_ActivePanel.nodes),
-                  onExit: (_) => _onPanelExit(),
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    margin: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                      border: Border.all(color: borderFor(_ActivePanel.nodes), width: widthFor(_ActivePanel.nodes)),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            width: nodesOpen ? 220 : 0,
+            child: nodesOpen
+                ? GestureDetector(
+                    onTap: () => _onPanelTap(_ActivePanel.nodes),
+                    child: MouseRegion(
+                      onEnter: (_) => _onPanelEnter(_ActivePanel.nodes),
+                      onExit: (_) => _onPanelExit(),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        margin: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                          border: Border.all(color: borderFor(_ActivePanel.nodes), width: widthFor(_ActivePanel.nodes)),
+                        ),
+                        child: _buildPanelContent(NodesLayout()),
+                      ),
                     ),
-                    child: _buildPanelContent(NodesLayout()),
-                  ),
-                )
-              : const SizedBox.shrink(),
-        ),
-        const SizedBox(width: 2),
-        Expanded(
-          child: Column(
-            children: [
-              Expanded(
-                child: MouseRegion(
-                  onEnter: (_) => _onPanelEnter(_ActivePanel.tabs),
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    margin: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: borderFor(_ActivePanel.tabs), width: widthFor(_ActivePanel.tabs)),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          const SizedBox(width: 2),
+          Expanded(
+            child: Column(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => _onPanelTap(_ActivePanel.tabs),
+                    child: MouseRegion(
+                      onEnter: (_) => _onPanelEnter(_ActivePanel.tabs),
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        margin: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: borderFor(_ActivePanel.tabs), width: widthFor(_ActivePanel.tabs)),
+                        ),
+                        child: _buildPanelContent(TabsPanelLayout()),
+                      ),
                     ),
-                    child: _buildPanelContent(TabsPanelLayout()),
                   ),
                 ),
-              ),
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-                height: logsOpen ? 200 : 0,
-                child: logsOpen
-                    ? MouseRegion(
-                        onEnter: (_) => _onPanelEnter(_ActivePanel.logs),
-                        onExit: (_) => _onPanelExit(),
-                        child: Container(
-                          padding: const EdgeInsets.all(2),
-                          margin: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                            border: Border.all(color: borderFor(_ActivePanel.logs), width: widthFor(_ActivePanel.logs)),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  height: logsOpen ? 200 : 0,
+                  child: logsOpen
+                      ? GestureDetector(
+                          onTap: () => _onPanelTap(_ActivePanel.logs),
+                          child: MouseRegion(
+                            onEnter: (_) => _onPanelEnter(_ActivePanel.logs),
+                            onExit: (_) => _onPanelExit(),
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              margin: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                                border: Border.all(
+                                  color: borderFor(_ActivePanel.logs),
+                                  width: widthFor(_ActivePanel.logs),
+                                ),
+                              ),
+                              child: _buildPanelContent(LogsLayout()),
+                            ),
                           ),
-                          child: _buildPanelContent(LogsLayout()),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: 2),
-      ],
+          const SizedBox(width: 2),
+        ],
+      ),
     );
   }
 }
@@ -677,6 +637,7 @@ class _AppsSidebarState extends State<_AppsSidebar> {
                 icon: app.icon,
                 isActive: app.id == activeAppId,
                 isDark: isDark,
+                color: app.color,
                 onTap: () => widget.coordinator.navigate(AppShortDescRoute(appId: app.id)),
               );
             }).toList(),
@@ -695,6 +656,7 @@ class _AppSidebarItem extends StatefulWidget {
     required this.isActive,
     required this.isDark,
     required this.onTap,
+    required this.color,
   });
 
   final String appId;
@@ -703,6 +665,7 @@ class _AppSidebarItem extends StatefulWidget {
   final bool isActive;
   final bool isDark;
   final VoidCallback onTap;
+  final Color color;
 
   @override
   State<_AppSidebarItem> createState() => _AppSidebarItemState();
@@ -723,9 +686,6 @@ class _AppSidebarItemState extends State<_AppSidebarItem> {
     final textColor = widget.isActive
         ? (widget.isDark ? Colors.blue[200]! : Colors.blue[800]!)
         : (widget.isDark ? Colors.white : Colors.black87);
-    final iconColor = widget.isActive
-        ? (widget.isDark ? Colors.blue[200]! : Colors.blue[700]!)
-        : (widget.isDark ? Colors.white70 : Colors.grey[600]!);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -743,7 +703,7 @@ class _AppSidebarItemState extends State<_AppSidebarItem> {
           ),
           child: Row(
             children: [
-              Icon(widget.icon, size: 20, color: iconColor),
+              Icon(widget.icon, size: 20, color: widget.color),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
