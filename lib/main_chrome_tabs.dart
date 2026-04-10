@@ -251,7 +251,14 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
     if (activeTab == null) return;
     final innerPath = tabPath.tabPathFor(activeTab);
     if (innerPath.stack.isEmpty) return;
-    _updateDisplayedUrl(innerPath.stack.last.identifier);
+
+    final topRoute = innerPath.stack.last;
+    if (topRoute is AppDetailLayout) {
+      final drawerPath = widget.coordinator.appDrawerPath(topRoute.appId);
+      _updateDisplayedUrl(drawerPath.activeRoute.identifier);
+      return;
+    }
+    _updateDisplayedUrl(topRoute.identifier);
   }
 
   @override
@@ -683,7 +690,7 @@ class _AppsSidebarState extends State<_AppsSidebar> {
                 icon: app.icon,
                 isActive: app.id == activeAppId,
                 isDark: isDark,
-                onTap: () => widget.coordinator.navigate(AppDetailTab(appId: app.id)),
+                onTap: () => widget.coordinator.navigate(AppShortDescRoute(appId: app.id)),
               );
             }).toList(),
           ),
@@ -1020,6 +1027,12 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   @override
   bool get debugEnabled => true;
 
+  @override
+  Future<void> navigate(AppRoute route) async {
+    await super.navigate(route);
+    WidgetsBinding.instance.addPostFrameCallback((_) => notifyListeners());
+  }
+
   final nodesOpen = ValueNotifier<bool>(false);
   final logsOpen = ValueNotifier<bool>(true);
 
@@ -1095,15 +1108,38 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
       final p = NavigationPath<AppRoute>.createWith(
         coordinator: this,
         label: 'app-$appId',
-        stack: [AppDetailTab(appId: appId)],
+        stack: [AppDetailLayout(appId: appId)],
       );
       p.addListener(notifyListeners);
       return p;
     });
     if (path.stack.isEmpty) {
-      path.push(AppDetailTab(appId: appId));
+      path.push(AppDetailLayout(appId: appId));
     }
     return path;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dynamic per-app IndexedStackPaths (drawer: short-desc, long-desc, settings)
+  // ---------------------------------------------------------------------------
+
+  final Map<String, IndexedStackPath<AppRoute>> _appDrawerPaths = {};
+
+  IndexedStackPath<AppRoute> appDrawerPath(String appId) {
+    return _appDrawerPaths.putIfAbsent(appId, () {
+      defineLayoutParent(() => AppDetailLayout(appId: appId));
+      final p = IndexedStackPath<AppRoute>.createWith(
+        [
+          AppShortDescRoute(appId: appId),
+          AppLongDescRoute(appId: appId),
+          AppSettingsRoute(appId: appId),
+        ],
+        coordinator: this,
+        label: 'app-drawer-$appId',
+      )..bindLayout(() => AppDetailLayout(appId: appId));
+      p.addListener(notifyListeners);
+      return p;
+    });
   }
 
   @override
@@ -1113,6 +1149,7 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     }
     if (layoutKey case (Type _, String appId)) {
       appTabPath(appId);
+      appDrawerPath(appId);
     }
     return super.createLayoutParent(layoutKey);
   }
@@ -1137,6 +1174,7 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     _settingsTabPath,
     ..._detailTabPaths.values,
     ..._appTabPaths.values,
+    ..._appDrawerPaths.values,
   ];
 
   @override
@@ -1168,10 +1206,11 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
       ['settings'] => SettingsTab(queries: q),
       ['settings', final section] => SettingsSectionRoute(sectionId: section, sectionTitle: section, queries: q),
       ['apps'] => HomeTab(queries: q),
-      ['apps', final id] => AppDetailTab(appId: id, queries: q),
-      ['apps', final id, 'filter'] => AppFilterRoute(appId: id, queries: q),
-      ['apps', final id, 'description', final type] => AppDescriptionRoute(appId: id, type: type, queries: q),
+      ['apps', final id] => AppShortDescRoute(appId: id, queries: q),
+      ['apps', final id, 'short-desc'] => AppShortDescRoute(appId: id, queries: q),
+      ['apps', final id, 'long-desc'] => AppLongDescRoute(appId: id, queries: q),
       ['apps', final id, 'settings'] => AppSettingsRoute(appId: id, queries: q),
+      ['apps', final id, 'filter'] => AppFilterRoute(appId: id, queries: q),
       ['nodes'] => HomeTab(queries: q),
       _ => HomeTab(queries: q),
     };
@@ -1188,19 +1227,17 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     DetailSectionRoute(tabId: 1, section: 'history'),
     DetailSectionRoute(tabId: 1, section: 'notes'),
     DetailNoteRoute(tabId: 1, noteId: 1),
-    AppDetailTab(appId: 'notes'),
-    AppDetailTab(appId: 'calendar'),
-    AppDetailTab(appId: 'music'),
-    AppDetailTab(appId: 'photos'),
-    AppDetailTab(appId: 'maps'),
-    AppFilterRoute(appId: 'notes'),
-    AppFilterRoute(appId: 'calendar'),
-    AppDescriptionRoute(appId: 'notes', type: 'short'),
-    AppDescriptionRoute(appId: 'notes', type: 'full'),
-    AppDescriptionRoute(appId: 'calendar', type: 'short'),
-    AppDescriptionRoute(appId: 'calendar', type: 'full'),
+    AppShortDescRoute(appId: 'notes'),
+    AppShortDescRoute(appId: 'calendar'),
+    AppShortDescRoute(appId: 'music'),
+    AppShortDescRoute(appId: 'photos'),
+    AppShortDescRoute(appId: 'maps'),
+    AppLongDescRoute(appId: 'notes'),
+    AppLongDescRoute(appId: 'calendar'),
     AppSettingsRoute(appId: 'notes'),
     AppSettingsRoute(appId: 'calendar'),
+    AppFilterRoute(appId: 'notes'),
+    AppFilterRoute(appId: 'calendar'),
     PostDetailRoute(postId: 1, postTitle: 'Post 1'),
     PostCommentRoute(postId: 1),
     TechDetailRoute(name: 'Flutter'),
@@ -1214,7 +1251,14 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     if (activeTab == null) return;
     final innerPath = tabsPath.tabPathFor(activeTab);
     if (innerPath.stack.isEmpty) return;
-    (innerPath.stack.last as AppRoute).buildSeo();
+
+    final topRoute = innerPath.stack.last;
+    if (topRoute is AppDetailLayout) {
+      final drawerPath = appDrawerPath(topRoute.appId);
+      drawerPath.activeRoute.buildSeo();
+      return;
+    }
+    (topRoute as AppRoute).buildSeo();
   }
 }
 
