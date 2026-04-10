@@ -4,6 +4,12 @@ class HomeTab extends AppRoute {
   HomeTab({super.queries});
 
   @override
+  String get title => 'Home';
+
+  @override
+  IconData? get icon => Icons.home;
+
+  @override
   Type get layout => HomeTabLayout;
 
   @override
@@ -77,6 +83,12 @@ class PostDetailRoute extends AppRoute {
   final String postTitle;
 
   @override
+  String get title => postTitle;
+
+  @override
+  IconData? get icon => Icons.article;
+
+  @override
   List<Object?> get props => [postId];
 
   @override
@@ -89,7 +101,7 @@ class PostDetailRoute extends AppRoute {
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Column(
       children: [
-        _InTabNavBar(title: postTitle, onBack: () => coordinator.tryPop()),
+        _InTabNavBar(title: postTitle, coordinator: coordinator),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),
@@ -130,6 +142,12 @@ class PostCommentRoute extends AppRoute with RouteDeepLink {
   final int postId;
 
   @override
+  String get title => 'Comments — Post $postId';
+
+  @override
+  IconData? get icon => Icons.comment;
+
+  @override
   List<Object?> get props => [postId, 'comments'];
 
   @override
@@ -153,7 +171,7 @@ class PostCommentRoute extends AppRoute with RouteDeepLink {
 
     return Column(
       children: [
-        _InTabNavBar(title: 'Comments - Post $postId', onBack: () => coordinator.tryPop()),
+        _InTabNavBar(title: 'Comments - Post $postId', coordinator: coordinator),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),

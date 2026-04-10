@@ -4,6 +4,12 @@ class AboutTab extends AppRoute {
   AboutTab({super.queries});
 
   @override
+  String get title => 'About';
+
+  @override
+  IconData? get icon => Icons.info;
+
+  @override
   Type get layout => AboutTabLayout;
 
   @override
@@ -52,6 +58,12 @@ class TechDetailRoute extends AppRoute {
   final String description;
 
   @override
+  String get title => name;
+
+  @override
+  IconData? get icon => Icons.code;
+
+  @override
   List<Object?> get props => [name];
 
   @override
@@ -64,7 +76,7 @@ class TechDetailRoute extends AppRoute {
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Column(
       children: [
-        _InTabNavBar(title: name, onBack: () => coordinator.tryPop()),
+        _InTabNavBar(title: name, coordinator: coordinator),
         Expanded(
           child: Center(
             child: Column(

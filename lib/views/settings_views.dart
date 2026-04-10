@@ -4,6 +4,12 @@ class SettingsTab extends AppRoute {
   SettingsTab({super.queries});
 
   @override
+  String get title => 'Settings';
+
+  @override
+  IconData? get icon => Icons.settings;
+
+  @override
   Type get layout => SettingsTabLayout;
 
   @override
@@ -56,6 +62,12 @@ class SettingsSectionRoute extends AppRoute {
   final String sectionTitle;
 
   @override
+  String get title => sectionTitle;
+
+  @override
+  IconData? get icon => Icons.tune;
+
+  @override
   List<Object?> get props => [sectionId];
 
   @override
@@ -68,7 +80,7 @@ class SettingsSectionRoute extends AppRoute {
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Column(
       children: [
-        _InTabNavBar(title: sectionTitle, onBack: () => coordinator.tryPop()),
+        _InTabNavBar(title: sectionTitle, coordinator: coordinator),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),

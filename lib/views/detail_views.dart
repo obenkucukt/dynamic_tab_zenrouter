@@ -7,6 +7,12 @@ class DetailTab extends AppRoute {
   final int id;
 
   @override
+  String get title => 'Tab $id';
+
+  @override
+  IconData? get icon => Icons.tab;
+
+  @override
   List<Object?> get props => [id];
 
   @override
@@ -68,6 +74,16 @@ class DetailSectionRoute extends AppRoute {
   final String section;
 
   @override
+  String get title => '${section[0].toUpperCase()}${section.substring(1)}';
+
+  @override
+  IconData? get icon => switch (section) {
+    'stats' => Icons.bar_chart,
+    'history' => Icons.history,
+    _ => Icons.note,
+  };
+
+  @override
   List<Object?> get props => [tabId, section];
 
   @override
@@ -82,7 +98,7 @@ class DetailSectionRoute extends AppRoute {
 
     return Column(
       children: [
-        _InTabNavBar(title: '$sectionTitle - Tab $tabId', onBack: () => coordinator.tryPop()),
+        _InTabNavBar(title: '$sectionTitle - Tab $tabId', coordinator: coordinator),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),
@@ -139,6 +155,12 @@ class DetailNoteRoute extends AppRoute with RouteDeepLink {
   final int noteId;
 
   @override
+  String get title => 'Note $noteId';
+
+  @override
+  IconData? get icon => Icons.note;
+
+  @override
   List<Object?> get props => [tabId, 'note', noteId];
 
   @override
@@ -154,7 +176,7 @@ class DetailNoteRoute extends AppRoute with RouteDeepLink {
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Column(
       children: [
-        _InTabNavBar(title: 'Note $noteId - Tab $tabId', onBack: () => coordinator.tryPop()),
+        _InTabNavBar(title: 'Note $noteId - Tab $tabId', coordinator: coordinator),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(24),

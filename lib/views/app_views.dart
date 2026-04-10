@@ -14,9 +14,7 @@ class _AppDataBloc extends ChangeNotifier {
   /// Called ONE-WAY from route queryNotifier listener.
   /// NEVER call updateQueries from this class (avoids circular flow).
   void onFiltersChanged(Map<String, String> allQueries) {
-    final filters = Map.fromEntries(
-      allQueries.entries.where((e) => e.key.startsWith('f')),
-    );
+    final filters = Map.fromEntries(allQueries.entries.where((e) => e.key.startsWith('f')));
     if (_mapEquals(filters, _activeFilters)) return;
     _activeFilters = filters;
     _filteredItems = _fetchData(filters);
@@ -49,6 +47,12 @@ class AppDetailTab extends AppRoute {
   AppDetailTab({required this.appId, super.queries});
 
   final String appId;
+
+  @override
+  String get title => _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+
+  @override
+  IconData? get icon => _kApps.where((a) => a.id == appId).firstOrNull?.icon ?? Icons.apps;
 
   @override
   List<Object?> get props => [appId];
@@ -105,7 +109,10 @@ class _AppDetailTabBodyState extends State<_AppDetailTabBody> {
       children: [
         Text(appName, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        Text('App ID: ${widget.route.appId}', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600])),
+        Text(
+          'App ID: ${widget.route.appId}',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.grey[600]),
+        ),
         const SizedBox(height: 24),
 
         // ----- Filter Chips (rebuild only when filter queries change) -----
@@ -135,7 +142,10 @@ class _AppDetailTabBodyState extends State<_AppDetailTabBody> {
                     ),
                     const SizedBox(height: 8),
                     if (filters.isEmpty)
-                      Text('No filters applied', style: TextStyle(color: Colors.grey[500], fontStyle: FontStyle.italic))
+                      Text(
+                        'No filters applied',
+                        style: TextStyle(color: Colors.grey[500], fontStyle: FontStyle.italic),
+                      )
                     else
                       Wrap(
                         spacing: 8,
@@ -173,7 +183,10 @@ class _AppDetailTabBodyState extends State<_AppDetailTabBody> {
                       children: [
                         Icon(Icons.list_alt, size: 20, color: Colors.green[700]),
                         const SizedBox(width: 8),
-                        const Text('Filtered Data (from Bloc)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                        const Text(
+                          'Filtered Data (from Bloc)',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
@@ -258,6 +271,12 @@ class AppDescriptionRoute extends AppRoute {
   final String type;
 
   @override
+  String get title => type == 'short' ? 'Short Description' : 'Full Description';
+
+  @override
+  IconData? get icon => Icons.description;
+
+  @override
   List<Object?> get props => [appId, 'description', type];
 
   @override
@@ -273,7 +292,7 @@ class AppDescriptionRoute extends AppRoute {
 
     return Column(
       children: [
-        _InTabNavBar(title: '$typeTitle - $appName', onBack: () => coordinator.tryPop()),
+        _InTabNavBar(title: '$typeTitle - $appName', coordinator: coordinator),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -319,6 +338,12 @@ class AppSettingsRoute extends AppRoute {
   final String appId;
 
   @override
+  String get title => 'Settings';
+
+  @override
+  IconData? get icon => Icons.settings;
+
+  @override
   List<Object?> get props => [appId, 'settings'];
 
   @override
@@ -331,24 +356,27 @@ class AppSettingsRoute extends AppRoute {
   Widget build(AppCoordinator coordinator, BuildContext context) {
     final appName = _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
 
-    return Column(
-      children: [
-        _InTabNavBar(title: 'Settings - $appName', onBack: () => coordinator.tryPop()),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: List.generate(
-              3,
-              (i) => SwitchListTile(
-                title: Text('$appName Setting ${i + 1}'),
-                subtitle: Text('Configure option ${i + 1}'),
-                value: i.isEven,
-                onChanged: (_) {},
+    return Material(
+      color: Colors.amber,
+      child: Column(
+        children: [
+          _InTabNavBar(title: 'Settings - $appName', coordinator: coordinator),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: List.generate(
+                3,
+                (i) => SwitchListTile(
+                  title: Text('$appName Setting ${i + 1}'),
+                  subtitle: Text('Configure option ${i + 1}'),
+                  value: i.isEven,
+                  onChanged: (_) {},
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -368,6 +396,12 @@ class AppFilterRoute extends AppRoute {
   AppFilterRoute({required this.appId, super.queries});
 
   final String appId;
+
+  @override
+  String get title => 'Filters';
+
+  @override
+  IconData? get icon => Icons.filter_list;
 
   @override
   List<Object?> get props => [appId, 'filter'];
@@ -418,17 +452,14 @@ class _AppFilterBodyState extends State<_AppFilterBody> {
 
     return Column(
       children: [
-        _InTabNavBar(title: 'Edit Filters - $appName', onBack: () => widget.coordinator.tryPop()),
+        _InTabNavBar(title: 'Edit Filters - $appName', coordinator: widget.coordinator),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(24),
             children: [
               Text('Filters', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Text(
-                'Select values for each filter. Press Save to apply.',
-                style: TextStyle(color: Colors.grey[600]),
-              ),
+              Text('Select values for each filter. Press Save to apply.', style: TextStyle(color: Colors.grey[600])),
               const SizedBox(height: 24),
               ..._kAvailableFilters.entries.map((entry) {
                 final filterKey = entry.key;

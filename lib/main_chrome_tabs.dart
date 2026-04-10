@@ -3,9 +3,12 @@ import 'dart:math';
 
 import 'package:dynamic_tab_zenrouter/chrome_tabs.dart';
 import 'package:dynamic_tab_zenrouter/tabs_path.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:zenrouter/zenrouter.dart';
 import 'package:zenrouter_devtools/zenrouter_devtools.dart';
+import 'package:meta_seo/meta_seo.dart';
 
 part 'views/home_views.dart';
 part 'views/about_views.dart';
@@ -14,12 +17,86 @@ part 'views/detail_views.dart';
 part 'views/app_views.dart';
 
 // ============================================================================
+// SEO Mixin
+// ============================================================================
+
+mixin RouteSeo on RouteUnique {
+  String get title;
+  IconData? get icon => null;
+  // String get description;
+  // String get keywords;
+  // // Optional meta tags with defaults
+  // String get author => 'Dai Duong';
+  // String? get ogImage => null; // URL to social media preview image
+  // String get ogType => 'website';
+  // TwitterCard? get twitterCard => TwitterCard.summaryLargeImage;
+  // String? get twitterSite => null; // e.g., '@yourusername'
+  // String? get canonicalUrl => null; // Canonical URL for this page
+  // String get language => 'en';
+  // String? get robots => null; // e.g., 'index, follow'
+
+  final meta = MetaSEO();
+
+  @override
+  void onUpdate(covariant RouteTarget newRoute) {
+    super.onUpdate(newRoute);
+    buildSeo();
+  }
+
+  @override
+  Widget build(covariant Coordinator<RouteUnique> coordinator, BuildContext context) {
+    buildSeo();
+    return const SizedBox.shrink();
+  }
+
+  void buildSeo() {
+    // Add MetaSEO just into Web platform condition
+    if (kIsWeb) {
+      // Basic meta tags
+      // meta.author(author: author);
+      // meta.description(description: description);
+      // meta.keywords(keywords: keywords);
+      // Open Graph meta tags (for Facebook, LinkedIn, etc.)
+      _setWebTitle(title);
+      // meta.ogTitle(ogTitle: title);
+      // meta.ogDescription(ogDescription: description);
+      // if (ogImage != null) {
+      //   meta.ogImage(ogImage: ogImage!);
+      // }
+      // // Twitter Card meta tags
+      // if (twitterCard != null) {
+      //   meta.twitterCard(twitterCard: twitterCard!);
+      // }
+      // meta.twitterTitle(twitterTitle: title);
+      // meta.twitterDescription(twitterDescription: description);
+      // if (ogImage != null) {
+      //   meta.twitterImage(twitterImage: ogImage!);
+      // }
+      // if (twitterSite != null) {
+      //   // Note: You may need to add this manually if MetaSEO doesn't support it
+      //   // or use meta.config() for custom tags
+      // }
+      // // Additional SEO tags
+      // if (robots != null) {
+      //   // Use meta.config() for custom tags
+      //   meta.robots(robotsName: RobotsName.robots, content: robots!);
+      // }
+    }
+  }
+
+  void _setWebTitle(String title) {
+    SystemChrome.setApplicationSwitcherDescription(
+      ApplicationSwitcherDescription(label: '$title — Chrome Tabs Demo', primaryColor: 0xFF2196F3),
+    );
+  }
+}
+
+// ============================================================================
 // Base Route Types
 // ============================================================================
 
-abstract class AppRoute extends RouteTarget with RouteUnique, RouteQueryParameters {
-  AppRoute({Map<String, String> queries = const {}})
-    : queryNotifier = ValueNotifier(queries);
+abstract class AppRoute extends RouteTarget with RouteUnique, RouteQueryParameters, RouteSeo {
+  AppRoute({Map<String, String> queries = const {}}) : queryNotifier = ValueNotifier(queries);
 
   @override
   final ValueNotifier<Map<String, String>> queryNotifier;
@@ -65,6 +142,12 @@ const _kApps = [
 
 class ChromeTabLayout extends AppRoute with RouteLayout<AppRoute> {
   ChromeTabLayout({super.queries});
+
+  @override
+  String get title => 'Chrome Tabs Demo';
+
+  @override
+  IconData? get icon => Icons.tab;
 
   @override
   TabsPath<TabRoute> resolvePath(AppCoordinator coordinator) => coordinator.tabsPath;
@@ -237,6 +320,12 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
 
 class HomeTabLayout extends TabLayoutRoute {
   @override
+  String get title => 'Home';
+
+  @override
+  IconData? get icon => Icons.home;
+
+  @override
   NavigationPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.homeTabPath;
 
   @override
@@ -254,6 +343,12 @@ class HomeTabLayout extends TabLayoutRoute {
 
 class AboutTabLayout extends TabLayoutRoute {
   @override
+  String get title => 'About';
+
+  @override
+  IconData? get icon => Icons.info;
+
+  @override
   NavigationPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.aboutTabPath;
 
   @override
@@ -270,6 +365,12 @@ class AboutTabLayout extends TabLayoutRoute {
 }
 
 class SettingsTabLayout extends TabLayoutRoute {
+  @override
+  String get title => 'Settings';
+
+  @override
+  IconData? get icon => Icons.settings;
+
   @override
   NavigationPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.settingsTabPath;
 
@@ -291,10 +392,16 @@ class SettingsTabLayout extends TabLayoutRoute {
 // ============================================================================
 
 class DetailTabLayout extends TabLayoutRoute {
-  DetailTabLayout({required this.id, this.title, super.queries});
+  DetailTabLayout({required this.id, this.tabTitle, super.queries});
 
   final int id;
-  final String? title;
+  final String? tabTitle;
+
+  @override
+  String get title => tabTitle ?? 'Tab $id';
+
+  @override
+  IconData? get icon => Icons.tab;
 
   @override
   List<Object?> get props => [id];
@@ -308,7 +415,7 @@ class DetailTabLayout extends TabLayoutRoute {
   @override
   Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
     return Text(
-      title ?? 'Tab $id',
+      tabTitle ?? 'Tab $id',
       style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
@@ -325,6 +432,12 @@ class AppTabLayout extends TabLayoutRoute {
 
   final String appId;
   final String? appName;
+
+  @override
+  String get title => appName ?? _kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+
+  @override
+  IconData? get icon => _kApps.where((a) => a.id == appId).firstOrNull?.icon ?? Icons.apps;
 
   @override
   List<Object?> get props => [appId];
@@ -359,6 +472,9 @@ class IndexRoute extends AppRoute with RouteRedirect {
   IndexRoute({super.queries});
 
   @override
+  String get title => 'Chrome Tabs Demo';
+
+  @override
   Widget build(AppCoordinator coordinator, BuildContext context) => const SizedBox.shrink();
 
   @override
@@ -372,11 +488,83 @@ class IndexRoute extends AppRoute with RouteRedirect {
 // Shared Widgets
 // ============================================================================
 
+class _AppBackButton extends StatelessWidget {
+  const _AppBackButton({required this.coordinator});
+
+  final AppCoordinator coordinator;
+
+  List<AppRoute> _getBackStack() {
+    final activeTab = coordinator.tabsPath.activeRoute;
+    if (activeTab == null) return [];
+    final innerPath = coordinator.tabsPath.tabPathFor(activeTab);
+    if (innerPath.stack.length <= 1) return [];
+    return innerPath.stack.sublist(0, innerPath.stack.length - 1).reversed.cast<AppRoute>().toList();
+  }
+
+  void _showBackStack(BuildContext context) {
+    final stack = _getBackStack();
+    if (stack.isEmpty) return;
+    final box = context.findRenderObject() as RenderBox;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final overlay = Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
+    final position = RelativeRect.fromRect(
+      Rect.fromPoints(
+        box.localToGlobal(Offset.zero, ancestor: overlay),
+        box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
+      ),
+      Offset.zero & overlay.size,
+    );
+
+    showMenu<AppRoute>(
+      context: context,
+      color: isDark ? const Color(0xFF2D2D2D) : null,
+      position: position,
+      constraints: const BoxConstraints(minWidth: 200, maxWidth: 320),
+      items: stack.map((route) {
+        return PopupMenuItem<AppRoute>(
+          value: route,
+          height: 40,
+          child: Row(
+            children: [
+              Icon(route.icon, size: 16, color: isDark ? Colors.white70 : Colors.grey[700]),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  route.title,
+                  style: const TextStyle(fontSize: 13),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Text(route.toUri().path, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+            ],
+          ),
+        );
+      }).toList(),
+    ).then((route) {
+      if (route != null) coordinator.navigate(route);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => coordinator.tryPop(),
+      onLongPress: () => _showBackStack(context),
+      customBorder: const CircleBorder(),
+      child: const Tooltip(
+        message: 'Back (long press for history)',
+        child: SizedBox(width: 44, height: 44, child: Center(child: Icon(Icons.arrow_back, size: 20))),
+      ),
+    );
+  }
+}
+
 class _InTabNavBar extends StatelessWidget {
-  const _InTabNavBar({required this.title, required this.onBack});
+  const _InTabNavBar({required this.title, required this.coordinator});
 
   final String title;
-  final VoidCallback onBack;
+  final AppCoordinator coordinator;
 
   @override
   Widget build(BuildContext context) {
@@ -390,7 +578,7 @@ class _InTabNavBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.arrow_back, size: 20), onPressed: onBack, tooltip: 'Back'),
+          _AppBackButton(coordinator: coordinator),
           Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
         ],
       ),
@@ -664,7 +852,9 @@ class _NodeItemState extends State<_NodeItem> {
 // ============================================================================
 
 class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRoute> {
-  AppCoordinator();
+  AppCoordinator() {
+    addListener(_updateWebTitle);
+  }
 
   @override
   bool get debugEnabled => true;
@@ -675,20 +865,38 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   // Static per-tab NavigationPaths
   // ---------------------------------------------------------------------------
 
-  late final homeTabPath = NavigationPath<AppRoute>.createWith(coordinator: this, label: 'home-tab', stack: [HomeTab()])
-    ..bindLayout(HomeTabLayout.new);
+  late final _homeTabPath = NavigationPath<AppRoute>.createWith(
+    coordinator: this,
+    label: 'home-tab',
+    stack: [HomeTab()],
+  )..bindLayout(HomeTabLayout.new);
 
-  late final aboutTabPath = NavigationPath<AppRoute>.createWith(
+  NavigationPath<AppRoute> get homeTabPath {
+    if (_homeTabPath.stack.isEmpty) _homeTabPath.push(HomeTab());
+    return _homeTabPath;
+  }
+
+  late final _aboutTabPath = NavigationPath<AppRoute>.createWith(
     coordinator: this,
     label: 'about-tab',
     stack: [AboutTab()],
   )..bindLayout(AboutTabLayout.new);
 
-  late final settingsTabPath = NavigationPath<AppRoute>.createWith(
+  NavigationPath<AppRoute> get aboutTabPath {
+    if (_aboutTabPath.stack.isEmpty) _aboutTabPath.push(AboutTab());
+    return _aboutTabPath;
+  }
+
+  late final _settingsTabPath = NavigationPath<AppRoute>.createWith(
     coordinator: this,
     label: 'settings-tab',
     stack: [SettingsTab()],
   )..bindLayout(SettingsTabLayout.new);
+
+  NavigationPath<AppRoute> get settingsTabPath {
+    if (_settingsTabPath.stack.isEmpty) _settingsTabPath.push(SettingsTab());
+    return _settingsTabPath;
+  }
 
   // ---------------------------------------------------------------------------
   // Dynamic per-tab NavigationPaths  (one per unique detail-tab id)
@@ -697,16 +905,20 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   final Map<int, NavigationPath<AppRoute>> _detailTabPaths = {};
 
   NavigationPath<AppRoute> detailTabPath(int id) {
-    return _detailTabPaths.putIfAbsent(id, () {
+    final path = _detailTabPaths.putIfAbsent(id, () {
       defineLayoutParent(() => DetailTabLayout(id: id));
-      final path = NavigationPath<AppRoute>.createWith(
+      final p = NavigationPath<AppRoute>.createWith(
         coordinator: this,
         label: 'detail-$id',
         stack: [DetailTab(id: id)],
       );
-      path.addListener(notifyListeners);
-      return path;
+      p.addListener(notifyListeners);
+      return p;
     });
+    if (path.stack.isEmpty) {
+      path.push(DetailTab(id: id));
+    }
+    return path;
   }
 
   // ---------------------------------------------------------------------------
@@ -716,16 +928,20 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   final Map<String, NavigationPath<AppRoute>> _appTabPaths = {};
 
   NavigationPath<AppRoute> appTabPath(String appId) {
-    return _appTabPaths.putIfAbsent(appId, () {
+    final path = _appTabPaths.putIfAbsent(appId, () {
       defineLayoutParent(() => AppTabLayout(appId: appId));
-      final path = NavigationPath<AppRoute>.createWith(
+      final p = NavigationPath<AppRoute>.createWith(
         coordinator: this,
         label: 'app-$appId',
         stack: [AppDetailTab(appId: appId)],
       );
-      path.addListener(notifyListeners);
-      return path;
+      p.addListener(notifyListeners);
+      return p;
     });
+    if (path.stack.isEmpty) {
+      path.push(AppDetailTab(appId: appId));
+    }
+    return path;
   }
 
   @override
@@ -754,9 +970,9 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   List<StackPath<RouteTarget>> get paths => [
     ...super.paths,
     tabsPath,
-    homeTabPath,
-    aboutTabPath,
-    settingsTabPath,
+    _homeTabPath,
+    _aboutTabPath,
+    _settingsTabPath,
     ..._detailTabPaths.values,
     ..._appTabPaths.values,
   ];
@@ -780,7 +996,11 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
         noteId: int.tryParse(noteId) ?? 0,
         queries: q,
       ),
-      ['detail', final id, final section] => DetailSectionRoute(tabId: int.tryParse(id) ?? 0, section: section, queries: q),
+      ['detail', final id, final section] => DetailSectionRoute(
+        tabId: int.tryParse(id) ?? 0,
+        section: section,
+        queries: q,
+      ),
       ['about'] => AboutTab(queries: q),
       ['about', 'tech', final name] => TechDetailRoute(name: name, queries: q),
       ['settings'] => SettingsTab(queries: q),
@@ -793,6 +1013,46 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
       ['nodes'] => HomeTab(queries: q),
       _ => HomeTab(queries: q),
     };
+  }
+
+  @override
+  List<AppRoute> get debugRoutes => [
+    ...super.debugRoutes,
+    HomeTab(),
+    AboutTab(),
+    SettingsTab(),
+    DetailTab(id: 1),
+    DetailSectionRoute(tabId: 1, section: 'stats'),
+    DetailSectionRoute(tabId: 1, section: 'history'),
+    DetailSectionRoute(tabId: 1, section: 'notes'),
+    DetailNoteRoute(tabId: 1, noteId: 1),
+    AppDetailTab(appId: 'notes'),
+    AppDetailTab(appId: 'calendar'),
+    AppDetailTab(appId: 'music'),
+    AppDetailTab(appId: 'photos'),
+    AppDetailTab(appId: 'maps'),
+    AppFilterRoute(appId: 'notes'),
+    AppFilterRoute(appId: 'calendar'),
+    AppDescriptionRoute(appId: 'notes', type: 'short'),
+    AppDescriptionRoute(appId: 'notes', type: 'full'),
+    AppDescriptionRoute(appId: 'calendar', type: 'short'),
+    AppDescriptionRoute(appId: 'calendar', type: 'full'),
+    AppSettingsRoute(appId: 'notes'),
+    AppSettingsRoute(appId: 'calendar'),
+    PostDetailRoute(postId: 1, postTitle: 'Post 1'),
+    PostCommentRoute(postId: 1),
+    TechDetailRoute(name: 'Flutter'),
+    TechDetailRoute(name: 'ZenRouter'),
+    SettingsSectionRoute(sectionId: 'theme', sectionTitle: 'Theme'),
+    SettingsSectionRoute(sectionId: 'tabs', sectionTitle: 'Tab Behavior'),
+  ];
+
+  void _updateWebTitle() {
+    final activeTab = tabsPath.activeRoute;
+    if (activeTab == null) return;
+    final innerPath = tabsPath.tabPathFor(activeTab);
+    if (innerPath.stack.isEmpty) return;
+    (innerPath.stack.last as AppRoute).buildSeo();
   }
 }
 
