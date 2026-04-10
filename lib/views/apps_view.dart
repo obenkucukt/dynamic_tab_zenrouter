@@ -10,18 +10,83 @@ import 'package:mix/mix.dart';
 import 'package:motor/motor.dart';
 import 'package:oref/oref.dart';
 
+enum StoreOfApp {
+  apple,
+  google;
+
+  static StoreOfApp fromName(String name) => switch (name) {
+    'apple' => .apple,
+    'google' => .google,
+    _ => throw Exception('Invalid store name: $name'),
+  };
+
+  IconData get icon => switch (this) {
+    .apple => Icons.apple,
+    .google => Icons.android,
+  };
+
+  Color get color => switch (this) {
+    .apple => Colors.blue,
+    .google => Colors.green,
+  };
+
+  String get storeName => switch (this) {
+    .apple => 'Apple Store',
+    .google => 'Google Play',
+  };
+
+  List<String> get versionTracks => switch (this) {
+    .apple => ['production', 'internal', 'external'],
+    .google => ['production', 'beta', 'alpha', 'internal'],
+  };
+
+  List<String> get screenshotSubTypes => switch (this) {
+    .apple => ['iphone', 'ipad'],
+    .google => ['phone', 'tablet7', 'tablet10'],
+  };
+}
+
 const kApps = [
-  (id: 'notes', name: 'Notes', subtitle: 'Quick notes & memos', icon: Icons.note, color: Color(0xFFFFA726)),
+  (
+    id: 'notes',
+    name: 'Notes',
+    subtitle: 'Quick notes & memos',
+    icon: Icons.note,
+    color: Color(0xFFFFA726),
+    store: StoreOfApp.apple,
+  ),
   (
     id: 'calendar',
     name: 'Calendar',
     subtitle: 'Events & schedules',
     icon: Icons.calendar_today,
     color: Color(0xFFEF5350),
+    store: StoreOfApp.google,
   ),
-  (id: 'music', name: 'Music', subtitle: 'Songs & playlists', icon: Icons.music_note, color: Color(0xFFAB47BC)),
-  (id: 'photos', name: 'Photos', subtitle: 'Albums & memories', icon: Icons.photo, color: Color(0xFF66BB6A)),
-  (id: 'maps', name: 'Maps', subtitle: 'Navigation & places', icon: Icons.map, color: Color(0xFF26A69A)),
+  (
+    id: 'music',
+    name: 'Music',
+    subtitle: 'Songs & playlists',
+    icon: Icons.music_note,
+    color: Color(0xFFAB47BC),
+    store: StoreOfApp.apple,
+  ),
+  (
+    id: 'photos',
+    name: 'Photos',
+    subtitle: 'Albums & memories',
+    icon: Icons.photo,
+    color: Color(0xFF66BB6A),
+    store: StoreOfApp.google,
+  ),
+  (
+    id: 'maps',
+    name: 'Maps',
+    subtitle: 'Navigation & places',
+    icon: Icons.map,
+    color: Color(0xFF26A69A),
+    store: StoreOfApp.apple,
+  ),
 ];
 
 // ============================================================================
@@ -147,12 +212,15 @@ class _AppsViewState extends State<AppsView> {
                                     appId: kApps[index].id,
                                     appName: kApps[index].name,
                                     subtitle: kApps[index].subtitle,
+                                    store: kApps[index].store,
                                     icon: kApps[index].icon,
                                     isActive: kApps[index].id == activeAppId,
                                     color: kApps[index].color,
                                     textOpacity: t,
                                     isMinimized: isMinimized(),
-                                    onTap: () => widget.coordinator.navigate(AppShortDescRoute(appId: kApps[index].id)),
+                                    onTap: () => widget.coordinator.navigate(
+                                      AppInfoRoute(appId: kApps[index].id, queries: {'store': kApps[index].store.name}),
+                                    ),
                                   );
                                 },
                               );
@@ -181,6 +249,7 @@ class _AppSidebarItem extends StatelessWidget {
     required this.appId,
     required this.appName,
     required this.subtitle,
+    required this.store,
     required this.icon,
     required this.isActive,
     required this.onTap,
@@ -192,6 +261,7 @@ class _AppSidebarItem extends StatelessWidget {
   final String appId;
   final String appName;
   final String subtitle;
+  final StoreOfApp store;
   final IconData icon;
   final bool isActive;
   final VoidCallback onTap;
@@ -220,6 +290,20 @@ class _AppSidebarItem extends StatelessWidget {
             children: [
               StyledText(appName, style: _titleTextStyle(isActive: isActive)),
               StyledText(subtitle, style: _subtitleTextStyle),
+              Box(
+                style: BoxStyler()
+                    .paddingAll(4)
+                    .margin(.symmetric(vertical: 4))
+                    .shapeSuperellipse(borderRadius: .circular(8))
+                    .color(store.color.withValues(alpha: 0.1)),
+                child: RowBox(
+                  style: FlexBoxStyler().spacing(4).crossAxisAlignment(.center).mainAxisSize(.min),
+                  children: [
+                    StyledIcon(icon: store.icon, style: IconStyler().size(12).color(store.color)),
+                    StyledText(store.storeName, style: _storeTextStyle(store)),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -261,6 +345,13 @@ TextStyler _titleTextStyle({required bool isActive}) => TextStyler()
 final _subtitleTextStyle = TextStyler()
     .fontSize(11)
     .color(Colors.grey[600]!)
+    .maxLines(1)
+    .overflow(TextOverflow.ellipsis);
+
+TextStyler _storeTextStyle(StoreOfApp store) => TextStyler()
+    .fontSize(10)
+    .fontWeight(FontWeight.w600)
+    .color(store.color)
     .maxLines(1)
     .overflow(TextOverflow.ellipsis);
 

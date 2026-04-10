@@ -455,6 +455,90 @@ class AppTabLayout extends TabLayoutRoute {
   }
 }
 
+// ============================================================================
+// Not Found Tab
+// ============================================================================
+
+class NotFoundTabLayout extends TabLayoutRoute {
+  @override
+  String get title => 'Not Found';
+
+  @override
+  IconData? get icon => Icons.error_outline;
+
+  @override
+  NavigationPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.notFoundTabPath;
+
+  @override
+  Widget tabLabel(AppCoordinator coordinator, TabsPath path, BuildContext context, bool active) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.error_outline, size: 16, color: active ? Colors.red : null),
+        const SizedBox(width: 8),
+        Text('Not Found', style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+      ],
+    );
+  }
+}
+
+class NotFoundRoute extends AppRoute {
+  NotFoundRoute({required this.requestedPath, super.queries});
+
+  final String requestedPath;
+
+  @override
+  String get title => 'Not Found';
+
+  @override
+  IconData? get icon => Icons.error_outline;
+
+  @override
+  List<Object?> get props => [requestedPath];
+
+  @override
+  Object? get parentLayoutKey => NotFoundTabLayout;
+
+  @override
+  Uri toUri() => Uri.parse('/not-found');
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(48),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 80, color: Colors.red[300]),
+            const SizedBox(height: 24),
+            Text('404', style: Theme.of(context).textTheme.displayLarge?.copyWith(fontWeight: FontWeight.bold, color: Colors.red[400])),
+            const SizedBox(height: 12),
+            Text('Page Not Found', style: Theme.of(context).textTheme.headlineSmall),
+            const SizedBox(height: 16),
+            Card(
+              color: Colors.grey[50],
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: SelectableText(
+                  requestedPath,
+                  style: TextStyle(fontFamily: 'monospace', fontSize: 14, color: Colors.grey[700]),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: () => coordinator.navigate(HomeTab()),
+              icon: const Icon(Icons.home),
+              label: const Text('Go Home'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class IndexRoute extends AppRoute with RouteRedirect {
   IndexRoute({super.queries});
 

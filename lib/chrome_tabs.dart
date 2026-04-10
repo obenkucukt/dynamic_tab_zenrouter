@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mix/mix.dart';
 import 'package:oref/oref.dart';
 import 'package:zenrouter/zenrouter.dart';
 import 'tabs_path.dart';
@@ -182,120 +183,56 @@ class _ChromeTabState<T extends RouteTab> extends State<_ChromeTab<T>> {
   }
 }
 
-class _CloseButton extends StatefulWidget {
+class _CloseButton extends StatelessWidget {
   const _CloseButton({required this.onPressed, required this.isVisible});
 
   final VoidCallback onPressed;
   final bool isVisible;
 
   @override
-  State<_CloseButton> createState() => _CloseButtonState();
-}
-
-class _CloseButtonState extends State<_CloseButton> {
-  bool _isHovered = false;
-
-  @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: AnimatedOpacity(
-          opacity: widget.isVisible ? 1.0 : 0.0,
-          duration: const Duration(milliseconds: 150),
-          child: Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: _isHovered ? (const Color(0xFFDADCE0)) : Colors.transparent,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.close, size: 16, color: const Color(0xFF5F6368)),
-          ),
-        ),
-      ),
+    return PressableBox(
+      onPress: onPressed,
+      style: BoxStyler()
+          .size(24, 24)
+          .alignment(Alignment.center)
+          .color(Colors.transparent)
+          .onHovered(BoxStyler().color(const Color(0xFFDADCE0)))
+          .borderRounded(12)
+          .wrap(.opacity(isVisible ? 1.0 : 0.0))
+          .animate(.curve(duration: Duration(milliseconds: 150), curve: Curves.linear)),
+      child: StyledIcon(icon: Icons.close, style: IconStyler().size(16).color(const Color(0xFF5F6368))),
     );
   }
 }
 
-class _NewTabButton extends StatefulWidget {
+class _NewTabButton extends StatelessWidget {
   const _NewTabButton({required this.onPressed});
 
   final VoidCallback onPressed;
 
   @override
-  State<_NewTabButton> createState() => _NewTabButtonState();
-}
-
-class _NewTabButtonState extends State<_NewTabButton> {
-  bool _isHovered = false;
-
-  @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 36,
-          height: 36,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(
-            color: _isHovered ? (const Color(0xFFDADCE0)) : Colors.transparent,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.add, size: 18, color: const Color(0xFF5F6368)),
-        ),
-      ),
+    return PressableBox(
+      onPress: onPressed,
+      style: _circleButtonStyle,
+      child: StyledIcon(icon: Icons.add, style: _circleButtonIconStyle),
     );
   }
 }
 
-// Grid view toggle button
-class _GridViewToggleButton extends StatefulWidget {
+class _GridViewToggleButton extends StatelessWidget {
   const _GridViewToggleButton({required this.isGridView, required this.onPressed});
 
   final bool isGridView;
   final VoidCallback onPressed;
 
   @override
-  State<_GridViewToggleButton> createState() => _GridViewToggleButtonState();
-}
-
-class _GridViewToggleButtonState extends State<_GridViewToggleButton> {
-  bool _isHovered = false;
-
-  @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onPressed,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          width: 36,
-          height: 36,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          decoration: BoxDecoration(
-            color: widget.isGridView
-                ? (const Color(0xFFDADCE0))
-                : _isHovered
-                ? (const Color(0xFFDADCE0))
-                : Colors.transparent,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(
-            widget.isGridView ? Icons.close_fullscreen : Icons.grid_view,
-            size: 18,
-            color: const Color(0xFF5F6368),
-          ),
-        ),
-      ),
+    return PressableBox(
+      onPress: onPressed,
+      style: _circleButtonStyle.color(isGridView ? const Color(0xFFDADCE0) : Colors.transparent),
+      child: StyledIcon(icon: isGridView ? Icons.close_fullscreen : Icons.grid_view, style: _circleButtonIconStyle),
     );
   }
 }
@@ -415,12 +352,12 @@ class _GridTabCardState<T extends RouteTab> extends State<_GridTabCard<T>> {
                       Expanded(child: widget.route.tabLabel(widget.coordinator, widget.path, context, widget.isActive)),
                       if (widget.onClose != null && _isHovered) ...[
                         const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: widget.onClose,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(color: const Color(0xFFE8EAED), shape: BoxShape.circle),
-                            child: Icon(Icons.close, size: 14, color: const Color(0xFF5F6368)),
+                        PressableBox(
+                          onPress: widget.onClose!,
+                          style: BoxStyler().paddingAll(4).color(const Color(0xFFE8EAED)).borderRounded(12),
+                          child: StyledIcon(
+                            icon: Icons.close,
+                            style: IconStyler().size(14).color(const Color(0xFF5F6368)),
                           ),
                         ),
                       ],
@@ -449,6 +386,18 @@ class _GridTabCardState<T extends RouteTab> extends State<_GridTabCard<T>> {
     );
   }
 }
+
+// Shared styles for circular icon buttons in the tab bar
+final _circleButtonStyle = BoxStyler()
+    .size(36, 36)
+    .alignment(Alignment.center)
+    .color(Colors.transparent)
+    .onHovered(BoxStyler().color(const Color(0xFFDADCE0)))
+    .borderRounded(18)
+    .margin(.symmetric(horizontal: 4))
+    .animate(.curve(duration: Duration(milliseconds: 150), curve: Curves.linear));
+
+final _circleButtonIconStyle = IconStyler().size(18).color(const Color(0xFF5F6368));
 
 /// Renders the inner [NavigationStack] for a single tab.
 ///

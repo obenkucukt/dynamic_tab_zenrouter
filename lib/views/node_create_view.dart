@@ -1,6 +1,8 @@
 import 'package:dynamic_tab_zenrouter/app_coordinator.dart';
 import 'package:dynamic_tab_zenrouter/main_chrome_tabs.dart';
+import 'package:dynamic_tab_zenrouter/widgets/app_back_button.dart';
 import 'package:flutter/material.dart';
+import 'package:mix/mix.dart';
 
 class NodeCreateRoute extends AppRoute {
   NodeCreateRoute({super.queries});
@@ -23,24 +25,14 @@ class NodeCreateRoute extends AppRoute {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
-              border: Border(bottom: BorderSide(color: const Color(0xFFE0E0E0))),
-            ),
+          Box(
+            style: navBarStyle,
             child: Row(
               children: [
-                GestureDetector(
-                  onTap: () => coordinator.nodesPath.pop(),
-                  child: MouseRegion(
-                    cursor: SystemMouseCursors.click,
-                    child: const SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: Center(child: Icon(Icons.arrow_back, size: 18)),
-                    ),
-                  ),
+                PressableBox(
+                  onPress: () => coordinator.nodesPath.pop(),
+                  style: BoxStyler().size(44, 44).alignment(Alignment.center),
+                  child: StyledIcon(icon: Icons.arrow_back, style: IconStyler().size(18)),
                 ),
                 Text(
                   'Create Node',

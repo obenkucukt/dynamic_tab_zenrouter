@@ -31,7 +31,6 @@ class NodesView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     debugPrint('NodesPanel build');
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,7 +67,7 @@ class NodesView extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: 8),
             children: kNodes.map((node) {
-              return _NodeItem(nodeId: node.id, label: node.label, icon: node.icon, isDark: isDark);
+              return _NodeItem(nodeId: node.id, label: node.label, icon: node.icon);
             }).toList(),
           ),
         ),
@@ -90,47 +89,37 @@ class NodesView extends StatelessWidget {
   }
 }
 
-class _NodeItem extends StatefulWidget {
-  const _NodeItem({required this.nodeId, required this.label, required this.icon, required this.isDark});
+class _NodeItem extends StatelessWidget {
+  const _NodeItem({required this.nodeId, required this.label, required this.icon});
 
   final String nodeId;
   final String label;
   final IconData icon;
-  final bool isDark;
-
-  @override
-  State<_NodeItem> createState() => _NodeItemState();
-}
-
-class _NodeItemState extends State<_NodeItem> {
-  bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final hoverColor = widget.isDark ? const Color(0xFF3C3C3C) : const Color(0xFFF0F0F0);
-    final bgColor = _isHovered ? hoverColor : Colors.transparent;
-    final iconColor = widget.isDark ? Colors.white70 : Colors.grey[600]!;
+    const hoverColor = Color(0xFFF0F0F0);
+    final iconColor = Colors.grey[600]!;
+    const textColor = Colors.black87;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
-        child: Row(
-          children: [
-            Icon(widget.icon, size: 20, color: iconColor),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                widget.label,
-                style: TextStyle(fontSize: 14, color: widget.isDark ? Colors.white : Colors.black87),
-              ),
-            ),
-          ],
-        ),
+    return PressableBox(
+      style: BoxStyler()
+          .color(Colors.transparent)
+          .onHovered(BoxStyler().color(hoverColor))
+          .margin(EdgeInsetsDirectionalMix.symmetric(horizontal: 8, vertical: 2))
+          .paddingX(12)
+          .paddingY(10)
+          .borderRounded(8)
+          .animate(.curve(duration: Duration(milliseconds: 150), curve: Curves.linear)),
+      child: RowBox(
+        style: FlexBoxStyler().spacing(12),
+        children: [
+          StyledIcon(icon: icon, style: IconStyler().size(20).color(iconColor)),
+          Box(
+            style: BoxStyler().wrap(WidgetModifierConfig.flexible(fit: FlexFit.tight)),
+            child: Text(label, style: TextStyle(fontSize: 14, color: textColor)),
+          ),
+        ],
       ),
     );
   }

@@ -107,6 +107,18 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   }
 
   // ---------------------------------------------------------------------------
+  // Not Found tab
+  // ---------------------------------------------------------------------------
+
+  late final _notFoundTabPath = NavigationPath<AppRoute>.createWith(
+    coordinator: this,
+    label: 'not-found-tab',
+    stack: [],
+  )..bindLayout(NotFoundTabLayout.new);
+
+  NavigationPath<AppRoute> get notFoundTabPath => _notFoundTabPath;
+
+  // ---------------------------------------------------------------------------
   // Dynamic per-tab NavigationPaths  (one per unique detail-tab id)
   // ---------------------------------------------------------------------------
 
@@ -153,7 +165,7 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   }
 
   // ---------------------------------------------------------------------------
-  // Dynamic per-app IndexedStackPaths (drawer: short-desc, long-desc, settings)
+  // Dynamic per-app IndexedStackPaths (drawer: info, screenshots, versions)
   // ---------------------------------------------------------------------------
 
   final Map<String, IndexedStackPath<AppRoute>> _appDrawerPaths = {};
@@ -161,11 +173,57 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   IndexedStackPath<AppRoute> appDrawerPath(String appId) {
     return _appDrawerPaths.putIfAbsent(appId, () {
       defineLayoutParent(() => AppDetailLayout(appId: appId));
+      final store = kApps.where((a) => a.id == appId).firstOrNull?.store;
+      final q = <String, String>{if (store != null) 'store': store.name};
       final p = IndexedStackPath<AppRoute>.createWith(
-        [AppShortDescRoute(appId: appId), AppLongDescRoute(appId: appId), AppSettingsRoute(appId: appId)],
+        [AppInfoRoute(appId: appId, queries: q), AppsScreenshotsRoute(appId: appId, queries: q), AppVersionsRoute(appId: appId, queries: q)],
         coordinator: this,
         label: 'app-drawer-$appId',
       )..bindLayout(() => AppDetailLayout(appId: appId));
+      p.addListener(notifyListeners);
+      return p;
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dynamic per-app IndexedStackPaths (screenshots: subtypes per store)
+  // ---------------------------------------------------------------------------
+
+  final Map<String, IndexedStackPath<AppRoute>> _appScreenshotsPaths = {};
+
+  IndexedStackPath<AppRoute> appScreenshotsPath(String appId) {
+    return _appScreenshotsPaths.putIfAbsent(appId, () {
+      defineLayoutParent(() => AppsScreenshotsRoute(appId: appId));
+      final store = kApps.where((a) => a.id == appId).firstOrNull?.store ?? StoreOfApp.apple;
+      final q = <String, String>{'store': store.name};
+      final subTypes = store.screenshotSubTypes;
+      final p = IndexedStackPath<AppRoute>.createWith(
+        [for (final sub in subTypes) AppScreenshotSubTypeRoute(appId: appId, subType: sub, queries: q)],
+        coordinator: this,
+        label: 'app-screenshots-$appId',
+      )..bindLayout(() => AppsScreenshotsRoute(appId: appId));
+      p.addListener(notifyListeners);
+      return p;
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dynamic per-app IndexedStackPaths (versions: tracks per store)
+  // ---------------------------------------------------------------------------
+
+  final Map<String, IndexedStackPath<AppRoute>> _appVersionsPaths = {};
+
+  IndexedStackPath<AppRoute> appVersionsPath(String appId) {
+    return _appVersionsPaths.putIfAbsent(appId, () {
+      defineLayoutParent(() => AppVersionsRoute(appId: appId));
+      final store = kApps.where((a) => a.id == appId).firstOrNull?.store ?? StoreOfApp.apple;
+      final q = <String, String>{'store': store.name};
+      final tracks = store.versionTracks;
+      final p = IndexedStackPath<AppRoute>.createWith(
+        [for (final track in tracks) AppVersionTrackRoute(appId: appId, track: track, queries: q)],
+        coordinator: this,
+        label: 'app-versions-$appId',
+      )..bindLayout(() => AppVersionsRoute(appId: appId));
       p.addListener(notifyListeners);
       return p;
     });
@@ -179,6 +237,8 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     if (layoutKey case (Type _, String appId)) {
       appTabPath(appId);
       appDrawerPath(appId);
+      appScreenshotsPath(appId);
+      appVersionsPath(appId);
     }
     return super.createLayoutParent(layoutKey);
   }
@@ -202,9 +262,12 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     _homeTabPath,
     _aboutTabPath,
     _settingsTabPath,
+    _notFoundTabPath,
     ..._detailTabPaths.values,
     ..._appTabPaths.values,
     ..._appDrawerPaths.values,
+    ..._appScreenshotsPaths.values,
+    ..._appVersionsPaths.values,
     _appsPath,
     _nodesPath,
     _logsPath,
@@ -235,15 +298,22 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
       ['settings'] => SettingsTab(queries: q),
       ['settings', final section] => SettingsSectionRoute(sectionId: section, sectionTitle: section, queries: q),
       ['apps'] => HomeTab(queries: q),
-      ['apps', final id] => AppShortDescRoute(appId: id, queries: q),
-      ['apps', final id, 'short-desc'] => AppShortDescRoute(appId: id, queries: q),
-      ['apps', final id, 'long-desc'] => AppLongDescRoute(appId: id, queries: q),
-      ['apps', final id, 'settings'] => AppSettingsRoute(appId: id, queries: q),
+      ['apps', final id] => AppInfoRoute(appId: id, queries: q),
+      ['apps', final id, 'info'] => AppInfoRoute(appId: id, queries: q),
+      ['apps', final id, 'screenshots'] => AppScreenshotSubTypeRoute(appId: id, subType: _defaultScreenshotSubType(id), queries: q),
+      ['apps', final id, 'screenshots', final sub] => _isValidScreenshotSubType(id, sub)
+          ? AppScreenshotSubTypeRoute(appId: id, subType: sub, queries: q)
+          : NotFoundRoute(requestedPath: uri.toString(), queries: q),
+      ['apps', final id, 'versions'] => AppVersionTrackRoute(appId: id, track: _defaultTrack(id), queries: q),
+      ['apps', final id, 'versions', final track] => _isValidTrack(id, track)
+          ? AppVersionTrackRoute(appId: id, track: track, queries: q)
+          : NotFoundRoute(requestedPath: uri.toString(), queries: q),
       ['apps', final id, 'filter'] => AppFilterRoute(appId: id, queries: q),
       ['nodes'] => NodesRoute(queries: q),
       ['nodes', 'create'] => NodeCreateRoute(queries: q),
       ['logs'] => LogsRoute(queries: q),
-      _ => HomeTab(queries: q),
+      ['not-found'] => NotFoundRoute(requestedPath: q['path'] ?? uri.toString(), queries: q),
+      _ => NotFoundRoute(requestedPath: uri.toString(), queries: q),
     };
   }
 
@@ -262,15 +332,23 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     DetailSectionRoute(tabId: 1, section: 'history'),
     DetailSectionRoute(tabId: 1, section: 'notes'),
     DetailNoteRoute(tabId: 1, noteId: 1),
-    AppShortDescRoute(appId: 'notes'),
-    AppShortDescRoute(appId: 'calendar'),
-    AppShortDescRoute(appId: 'music'),
-    AppShortDescRoute(appId: 'photos'),
-    AppShortDescRoute(appId: 'maps'),
-    AppLongDescRoute(appId: 'notes'),
-    AppLongDescRoute(appId: 'calendar'),
-    AppSettingsRoute(appId: 'notes'),
-    AppSettingsRoute(appId: 'calendar'),
+    AppInfoRoute(appId: 'notes'),
+    AppInfoRoute(appId: 'calendar'),
+    AppInfoRoute(appId: 'music'),
+    AppInfoRoute(appId: 'photos'),
+    AppInfoRoute(appId: 'maps'),
+    AppScreenshotSubTypeRoute(appId: 'notes', subType: 'iphone'),
+    AppScreenshotSubTypeRoute(appId: 'notes', subType: 'ipad'),
+    AppScreenshotSubTypeRoute(appId: 'calendar', subType: 'phone'),
+    AppScreenshotSubTypeRoute(appId: 'calendar', subType: 'tablet7'),
+    AppScreenshotSubTypeRoute(appId: 'calendar', subType: 'tablet10'),
+    AppVersionTrackRoute(appId: 'notes', track: 'production'),
+    AppVersionTrackRoute(appId: 'notes', track: 'internal'),
+    AppVersionTrackRoute(appId: 'notes', track: 'external'),
+    AppVersionTrackRoute(appId: 'calendar', track: 'production'),
+    AppVersionTrackRoute(appId: 'calendar', track: 'beta'),
+    AppVersionTrackRoute(appId: 'calendar', track: 'alpha'),
+    AppVersionTrackRoute(appId: 'calendar', track: 'internal'),
     AppFilterRoute(appId: 'notes'),
     AppFilterRoute(appId: 'calendar'),
     PostDetailRoute(postId: 1, postTitle: 'Post 1'),
@@ -279,7 +357,30 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     TechDetailRoute(name: 'ZenRouter'),
     SettingsSectionRoute(sectionId: 'theme', sectionTitle: 'Theme'),
     SettingsSectionRoute(sectionId: 'tabs', sectionTitle: 'Tab Behavior'),
+    NotFoundRoute(requestedPath: '/invalid-page'),
   ];
+
+  String _defaultScreenshotSubType(String appId) {
+    final store = kApps.where((a) => a.id == appId).firstOrNull?.store ?? StoreOfApp.apple;
+    return store.screenshotSubTypes.first;
+  }
+
+  bool _isValidScreenshotSubType(String appId, String subType) {
+    final store = kApps.where((a) => a.id == appId).firstOrNull?.store;
+    if (store == null) return false;
+    return store.screenshotSubTypes.contains(subType);
+  }
+
+  String _defaultTrack(String appId) {
+    final store = kApps.where((a) => a.id == appId).firstOrNull?.store ?? StoreOfApp.apple;
+    return store.versionTracks.first;
+  }
+
+  bool _isValidTrack(String appId, String track) {
+    final store = kApps.where((a) => a.id == appId).firstOrNull?.store;
+    if (store == null) return false;
+    return store.versionTracks.contains(track);
+  }
 
   void _updateWebTitle() {
     final activePanel = panelPath.activeRoute;
@@ -293,7 +394,18 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
       final topRoute = innerPath.stack.last;
       if (topRoute is AppDetailLayout) {
         final drawerPath = appDrawerPath(topRoute.appId);
-        drawerPath.activeRoute.buildSeo();
+        final activeDrawerRoute = drawerPath.activeRoute;
+        if (activeDrawerRoute is AppsScreenshotsRoute) {
+          final screenshotsPath = appScreenshotsPath(activeDrawerRoute.appId);
+          screenshotsPath.activeRoute.buildSeo();
+          return;
+        }
+        if (activeDrawerRoute is AppVersionsRoute) {
+          final versionsPath = appVersionsPath(activeDrawerRoute.appId);
+          versionsPath.activeRoute.buildSeo();
+          return;
+        }
+        activeDrawerRoute.buildSeo();
         return;
       }
       (topRoute as AppRoute).buildSeo();

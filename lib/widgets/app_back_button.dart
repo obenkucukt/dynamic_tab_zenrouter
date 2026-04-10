@@ -1,6 +1,7 @@
 import 'package:dynamic_tab_zenrouter/app_coordinator.dart';
 import 'package:dynamic_tab_zenrouter/main_chrome_tabs.dart';
 import 'package:flutter/material.dart';
+import 'package:mix/mix.dart';
 
 class AppBackButton extends StatelessWidget {
   const AppBackButton({super.key, required this.coordinator});
@@ -82,12 +83,8 @@ class InTabNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
-        border: Border(bottom: BorderSide(color: const Color(0xFFE0E0E0))),
-      ),
+    return Box(
+      style: navBarStyle,
       child: Row(
         children: [
           AppBackButton(coordinator: coordinator),
@@ -97,3 +94,8 @@ class InTabNavBar extends StatelessWidget {
     );
   }
 }
+
+final navBarStyle = BoxStyler()
+    .height(44)
+    .color(const Color(0xFFF5F5F5))
+    .border(BorderMix(bottom: BorderSideMix(color: const Color(0xFFE0E0E0), width: 1)));

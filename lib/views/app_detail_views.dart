@@ -53,98 +53,98 @@ class _AppDetailLayoutBody extends StatelessWidget {
     final appIcon = kApps.where((a) => a.id == route.appId).firstOrNull?.icon ?? Icons.apps;
     final path = coordinator.appDrawerPath(route.appId);
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: Builder(
-          builder: (ctx) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(ctx).openDrawer()),
-        ),
-        title: Text(appName),
-        centerTitle: false,
-        elevation: 0,
-      ),
-      drawer: Drawer(
-        child: ListenableBuilder(
-          listenable: path,
-          builder: (context, _) {
-            return ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                DrawerHeader(
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
+    return Material(
+      child: Row(
+        children: [
+          SizedBox(
+            width: 220,
+            child: ListenableBuilder(
+              listenable: path,
+              builder: (context, _) {
+                return DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border(right: BorderSide(color: Colors.grey[300]!)),
+                  ),
+                  child: ListView(
+                    padding: EdgeInsets.zero,
                     children: [
-                      Icon(appIcon, size: 40, color: Colors.white),
-                      const SizedBox(height: 12),
-                      Text(
-                        appName,
-                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                      DecoratedBox(
+                        decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          mainAxisSize: .min,
+                          children: [
+                            Icon(appIcon, size: 40, color: Colors.white),
+                            const SizedBox(height: 12),
+                            Text(
+                              appName,
+                              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                            ),
+                            Text('App ID: ${route.appId}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                          ],
+                        ),
                       ),
-                      Text('App ID: ${route.appId}', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                    ListTile(
+                      leading: const Icon(Icons.info),
+                      title: const Text('App Info'),
+                      selected: path.activeIndex == 0,
+                      onTap: () {
+                        coordinator.navigate(AppInfoRoute(appId: route.appId, queries: path.activeRoute.queries));
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.screenshot),
+                      title: const Text('Screenshots'),
+                      selected: path.activeIndex == 1,
+                      onTap: () {
+                        coordinator.navigate(AppsScreenshotsRoute(appId: route.appId, queries: path.activeRoute.queries));
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.history),
+                      title: const Text('Versions'),
+                      selected: path.activeIndex == 2,
+                      onTap: () {
+                        coordinator.navigate(AppVersionsRoute(appId: route.appId, queries: path.activeRoute.queries));
+                      },
+                    ),
                     ],
                   ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.description),
-                  title: const Text('Short Description'),
-                  selected: path.activeIndex == 0,
-                  onTap: () {
-                    coordinator.navigate(AppShortDescRoute(appId: route.appId));
-                    // Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.article),
-                  title: const Text('Long Description'),
-                  selected: path.activeIndex == 1,
-                  onTap: () {
-                    coordinator.navigate(AppLongDescRoute(appId: route.appId));
-                    // Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.settings),
-                  title: const Text('App Settings'),
-                  selected: path.activeIndex == 2,
-                  onTap: () {
-                    coordinator.navigate(AppSettingsRoute(appId: route.appId));
-                    // Navigator.pop(context);
-                  },
-                ),
-              ],
-            );
-          },
-        ),
+                );
+              },
+            ),
+          ),
+          Flexible(child: route.buildPath(coordinator)),
+        ],
       ),
-      body: route.buildPath(coordinator),
     );
   }
 }
 
 // ============================================================================
-// AppShortDescRoute
+// AppInfoRoute
 // ============================================================================
 
-class AppShortDescRoute extends AppRoute {
-  AppShortDescRoute({required this.appId, super.queries});
+class AppInfoRoute extends AppRoute {
+  AppInfoRoute({required this.appId, super.queries});
 
   final String appId;
 
   @override
-  String get title => 'Short Description';
+  String get title => 'App Info';
 
   @override
-  IconData? get icon => Icons.description;
+  IconData? get icon => Icons.info;
 
   @override
-  List<Object?> get props => [appId, 'short-desc'];
+  List<Object?> get props => [appId, 'info'];
 
   @override
   Object? get parentLayoutKey => (AppDetailLayout, appId);
 
   @override
-  Uri toUri() => Uri.parse('/apps/$appId/short-desc');
+  Uri toUri() => Uri.parse('/apps/$appId/info');
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
@@ -176,105 +176,325 @@ class AppShortDescRoute extends AppRoute {
 }
 
 // ============================================================================
-// AppLongDescRoute
+// AppsScreenshotsRoute — Layout with TabBar (subtypes from StoreOfApp)
 // ============================================================================
 
-class AppLongDescRoute extends AppRoute {
-  AppLongDescRoute({required this.appId, super.queries});
+class AppsScreenshotsRoute extends AppRoute with RouteLayout<AppRoute> {
+  AppsScreenshotsRoute({required this.appId, super.queries});
 
   final String appId;
 
   @override
-  String get title => 'Long Description';
+  String get title => 'Screenshots';
 
   @override
-  IconData? get icon => Icons.article;
+  IconData? get icon => Icons.screenshot;
 
   @override
-  List<Object?> get props => [appId, 'long-desc'];
+  List<Object?> get props => [appId, 'screenshots'];
 
   @override
   Object? get parentLayoutKey => (AppDetailLayout, appId);
 
   @override
-  Uri toUri() => Uri.parse('/apps/$appId/long-desc');
+  Object get layoutKey => (AppsScreenshotsRoute, appId);
+
+  @override
+  Uri toUri() => Uri.parse('/apps/$appId/screenshots');
+
+  @override
+  IndexedStackPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.appScreenshotsPath(appId);
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
-    final appName = kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+    return _AppScreenshotsBody(route: this, coordinator: coordinator);
+  }
+}
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Long Description',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+class _AppScreenshotsBody extends StatefulWidget {
+  const _AppScreenshotsBody({required this.route, required this.coordinator});
+
+  final AppsScreenshotsRoute route;
+  final AppCoordinator coordinator;
+
+  @override
+  State<_AppScreenshotsBody> createState() => _AppScreenshotsBodyState();
+}
+
+class _AppScreenshotsBodyState extends State<_AppScreenshotsBody> with SingleTickerProviderStateMixin {
+  late final IndexedStackPath<AppRoute> _path;
+  late final List<String> _subTypes;
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    final store = kApps.where((a) => a.id == widget.route.appId).firstOrNull?.store ?? StoreOfApp.apple;
+    _subTypes = store.screenshotSubTypes;
+    _path = widget.coordinator.appScreenshotsPath(widget.route.appId);
+    _tabController = TabController(length: _subTypes.length, initialIndex: _path.activeIndex, vsync: this);
+    _path.addListener(_syncTab);
+  }
+
+  @override
+  void dispose() {
+    _path.removeListener(_syncTab);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _syncTab() {
+    if (_tabController.index != _path.activeIndex) {
+      _tabController.animateTo(_path.activeIndex);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Material(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: [
+              for (final sub in _subTypes) Tab(text: sub[0].toUpperCase() + sub.substring(1)),
+            ],
+            onTap: (i) {
+              widget.coordinator.navigate(AppScreenshotSubTypeRoute(
+                appId: widget.route.appId,
+                subType: _subTypes[i],
+                queries: _path.activeRoute.queries,
+              ));
+            },
           ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                '$appName is a comprehensive application designed to enhance your '
-                'productivity and streamline your daily workflow. It offers a wide '
-                'range of features including real-time collaboration, cloud sync, '
-                'and cross-platform support.\n\n'
-                'Key features:\n'
-                '- Intuitive user interface\n'
-                '- Cross-platform compatibility\n'
-                '- Real-time sync\n'
-                '- Offline support',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+        Expanded(child: widget.route.buildPath(widget.coordinator)),
+      ],
     );
   }
 }
 
 // ============================================================================
-// AppSettingsRoute
+// AppScreenshotSubTypeRoute — one tab per screenshot subtype
 // ============================================================================
 
-class AppSettingsRoute extends AppRoute {
-  AppSettingsRoute({required this.appId, super.queries});
+class AppScreenshotSubTypeRoute extends AppRoute {
+  AppScreenshotSubTypeRoute({required this.appId, required this.subType, super.queries});
+
+  final String appId;
+  final String subType;
+
+  @override
+  String get title => subType[0].toUpperCase() + subType.substring(1);
+
+  @override
+  IconData? get icon => Icons.phone_android;
+
+  @override
+  List<Object?> get props => [appId, 'screenshots', subType];
+
+  @override
+  Object? get parentLayoutKey => (AppsScreenshotsRoute, appId);
+
+  @override
+  Uri toUri() => Uri.parse('/apps/$appId/screenshots/$subType');
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    final appName = kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+    final subTitle = subType[0].toUpperCase() + subType.substring(1);
+
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        Text(
+          '$subTitle Screenshots',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text('$appName — $subTitle', style: TextStyle(color: Colors.grey[600])),
+        const SizedBox(height: 24),
+        ...List.generate(
+          4,
+          (i) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: Icon(Icons.image, color: Colors.blue[300]),
+              title: Text('Screenshot ${i + 1}'),
+              subtitle: Text('$subTitle — $appName screenshot ${i + 1}'),
+              trailing: Text('${(i + 1) * 320}x${(i + 1) * 568}', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================================
+// AppVersionsRoute — Layout with TabBar (tracks from StoreOfApp)
+// ============================================================================
+
+class AppVersionsRoute extends AppRoute with RouteLayout<AppRoute> {
+  AppVersionsRoute({required this.appId, super.queries});
 
   final String appId;
 
   @override
-  String get title => 'Settings';
+  String get title => 'Versions';
 
   @override
-  IconData? get icon => Icons.settings;
+  IconData? get icon => Icons.history;
 
   @override
-  List<Object?> get props => [appId, 'settings'];
+  List<Object?> get props => [appId, 'versions'];
 
   @override
   Object? get parentLayoutKey => (AppDetailLayout, appId);
 
   @override
-  Uri toUri() => Uri.parse('/apps/$appId/settings');
+  Object get layoutKey => (AppVersionsRoute, appId);
+
+  @override
+  Uri toUri() => Uri.parse('/apps/$appId/versions');
+
+  @override
+  IndexedStackPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.appVersionsPath(appId);
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    return _AppVersionsBody(route: this, coordinator: coordinator);
+  }
+}
+
+class _AppVersionsBody extends StatefulWidget {
+  const _AppVersionsBody({required this.route, required this.coordinator});
+
+  final AppVersionsRoute route;
+  final AppCoordinator coordinator;
+
+  @override
+  State<_AppVersionsBody> createState() => _AppVersionsBodyState();
+}
+
+class _AppVersionsBodyState extends State<_AppVersionsBody> with SingleTickerProviderStateMixin {
+  late final IndexedStackPath<AppRoute> _path;
+  late final List<String> _tracks;
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    final store = kApps.where((a) => a.id == widget.route.appId).firstOrNull?.store ?? StoreOfApp.apple;
+    _tracks = store.versionTracks;
+    _path = widget.coordinator.appVersionsPath(widget.route.appId);
+    _tabController = TabController(length: _tracks.length, initialIndex: _path.activeIndex, vsync: this);
+    _path.addListener(_syncTab);
+  }
+
+  @override
+  void dispose() {
+    _path.removeListener(_syncTab);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _syncTab() {
+    if (_tabController.index != _path.activeIndex) {
+      _tabController.animateTo(_path.activeIndex);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Material(
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+          child: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: [
+              for (final track in _tracks) Tab(text: track[0].toUpperCase() + track.substring(1)),
+            ],
+            onTap: (i) {
+              widget.coordinator.navigate(AppVersionTrackRoute(
+                appId: widget.route.appId,
+                track: _tracks[i],
+                queries: _path.activeRoute.queries,
+              ));
+            },
+          ),
+        ),
+        Expanded(child: widget.route.buildPath(widget.coordinator)),
+      ],
+    );
+  }
+}
+
+// ============================================================================
+// AppVersionTrackRoute — one tab per track
+// ============================================================================
+
+class AppVersionTrackRoute extends AppRoute {
+  AppVersionTrackRoute({required this.appId, required this.track, super.queries});
+
+  final String appId;
+  final String track;
+
+  @override
+  String get title => track[0].toUpperCase() + track.substring(1);
+
+  @override
+  IconData? get icon => Icons.track_changes;
+
+  @override
+  List<Object?> get props => [appId, 'versions', track];
+
+  @override
+  Object? get parentLayoutKey => (AppVersionsRoute, appId);
+
+  @override
+  Uri toUri() => Uri.parse('/apps/$appId/versions/$track');
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
     final appName = kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
+    final trackTitle = track[0].toUpperCase() + track.substring(1);
 
     return ListView(
       padding: const EdgeInsets.all(24),
-      children: List.generate(
-        3,
-        (i) => SwitchListTile(
-          title: Text('$appName Setting ${i + 1}'),
-          subtitle: Text('Configure option ${i + 1}'),
-          value: i.isEven,
-          onChanged: (_) {},
+      children: [
+        Text(
+          '$trackTitle Track',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
-      ),
+        const SizedBox(height: 8),
+        Text('$appName — $trackTitle', style: TextStyle(color: Colors.grey[600])),
+        const SizedBox(height: 24),
+        ...List.generate(
+          3,
+          (i) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: const Icon(Icons.new_releases),
+              title: Text('v${3 - i}.${i}.0'),
+              subtitle: Text('$trackTitle release ${3 - i}'),
+              trailing: Chip(
+                label: Text(
+                  i == 0 ? 'Latest' : 'Older',
+                  style: TextStyle(fontSize: 11, color: i == 0 ? Colors.green[700] : Colors.grey[600]),
+                ),
+                backgroundColor: i == 0 ? Colors.green[50] : Colors.grey[100],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

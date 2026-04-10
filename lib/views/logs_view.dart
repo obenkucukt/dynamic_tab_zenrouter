@@ -5,6 +5,7 @@
 import 'package:dynamic_tab_zenrouter/app_coordinator.dart';
 import 'package:dynamic_tab_zenrouter/main_chrome_tabs.dart';
 import 'package:flutter/material.dart';
+import 'package:mix/mix.dart';
 import 'package:motor/motor.dart';
 import 'package:oref/oref.dart';
 
@@ -116,38 +117,28 @@ class _LogsViewState extends State<LogsView> {
                                   style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ),
-                              GestureDetector(
-                                onTap: () => isMinimized.set(!isMinimized()),
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: Tooltip(
-                                    message: isMinimized() ? 'Expand' : 'Minimize',
-                                    child: Icon(
-                                      isMinimized() ? Icons.expand_less : Icons.expand_more,
-                                      size: 18,
-                                      color: Colors.grey[500],
-                                    ),
+                              PressableBox(
+                                onPress: () => isMinimized.set(!isMinimized()),
+                                child: Tooltip(
+                                  message: isMinimized() ? 'Expand' : 'Minimize',
+                                  child: StyledIcon(
+                                    icon: isMinimized() ? Icons.expand_less : Icons.expand_more,
+                                    style: _logActionIconStyle,
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () => setState(() => _logs.clear()),
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: Tooltip(
-                                    message: 'Clear logs',
-                                    child: Icon(Icons.delete_sweep, size: 18, color: Colors.grey[500]),
-                                  ),
+                              PressableBox(
+                                onPress: () => setState(() => _logs.clear()),
+                                child: Tooltip(
+                                  message: 'Clear logs',
+                                  child: StyledIcon(icon: Icons.delete_sweep, style: _logActionIconStyle),
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () => widget.coordinator.panelPath.remove(LogsLayout()),
-                                child: MouseRegion(
-                                  cursor: SystemMouseCursors.click,
-                                  child: Icon(Icons.close, size: 18, color: Colors.grey[500]),
-                                ),
+                              PressableBox(
+                                onPress: () => widget.coordinator.panelPath.remove(LogsLayout()),
+                                child: StyledIcon(icon: Icons.close, style: _logActionIconStyle),
                               ),
                             ],
                           ),
@@ -188,3 +179,5 @@ class _LogsViewState extends State<LogsView> {
     );
   }
 }
+
+final _logActionIconStyle = IconStyler().size(18).color(Colors.grey[500]!);
