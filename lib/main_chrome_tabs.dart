@@ -183,7 +183,7 @@ class _ChromeTabLayoutBody extends StatefulWidget {
   State<_ChromeTabLayoutBody> createState() => _ChromeTabLayoutBodyState();
 }
 
-enum _ActivePanel { apps, nodes, tabs }
+enum _ActivePanel { apps, nodes, tabs, logs }
 
 class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
   _ActivePanel _hoveredPanel = _ActivePanel.tabs;
@@ -193,17 +193,20 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
     super.initState();
     widget.coordinator.tabsPath.addListener(_onTabsChanged);
     widget.coordinator.nodesOpen.addListener(_onNodesChanged);
+    widget.coordinator.logsOpen.addListener(_onLogsChanged);
   }
 
   @override
   void dispose() {
     widget.coordinator.tabsPath.removeListener(_onTabsChanged);
     widget.coordinator.nodesOpen.removeListener(_onNodesChanged);
+    widget.coordinator.logsOpen.removeListener(_onLogsChanged);
     super.dispose();
   }
 
   void _onTabsChanged() => setState(() {});
   void _onNodesChanged() => setState(() {});
+  void _onLogsChanged() => setState(() {});
 
   _ActivePanel get _activePanel {
     if (_hoveredPanel != _ActivePanel.tabs) return _hoveredPanel;
@@ -227,6 +230,8 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
         _updateDisplayedUrl(Uri.parse('/apps'));
       case _ActivePanel.nodes:
         _updateDisplayedUrl(Uri.parse('/nodes'));
+      case _ActivePanel.logs:
+        _updateDisplayedUrl(Uri.parse('/logs'));
       case _ActivePanel.tabs:
         _restoreTabUrl();
     }
@@ -252,6 +257,7 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
     final active = _activePanel;
     final borderColor = isDark ? const Color(0xFF3C3C3C) : const Color(0xFFE0E0E0);
     final nodesOpen = widget.coordinator.nodesOpen.value;
+    final logsOpen = widget.coordinator.logsOpen.value;
 
     Color borderFor(_ActivePanel panel) => active == panel ? Colors.blue : borderColor;
     double widthFor(_ActivePanel panel) => active == panel ? 2.5 : 1;
@@ -296,16 +302,42 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
         ),
         const SizedBox(width: 2),
         Expanded(
-          child: MouseRegion(
-            onEnter: (_) => _onPanelEnter(_ActivePanel.tabs),
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              margin: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                border: Border.all(color: borderFor(_ActivePanel.tabs), width: widthFor(_ActivePanel.tabs)),
+          child: Column(
+            children: [
+              Expanded(
+                child: MouseRegion(
+                  onEnter: (_) => _onPanelEnter(_ActivePanel.tabs),
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    margin: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: borderFor(_ActivePanel.tabs), width: widthFor(_ActivePanel.tabs)),
+                    ),
+                    child: widget.tabsContent,
+                  ),
+                ),
               ),
-              child: widget.tabsContent,
-            ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                height: logsOpen ? 200 : 0,
+                child: logsOpen
+                    ? MouseRegion(
+                        onEnter: (_) => _onPanelEnter(_ActivePanel.logs),
+                        onExit: (_) => _onPanelExit(),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          margin: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                            border: Border.all(color: borderFor(_ActivePanel.logs), width: widthFor(_ActivePanel.logs)),
+                          ),
+                          child: _LogsPanel(coordinator: widget.coordinator),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ],
           ),
         ),
         const SizedBox(width: 2),
@@ -616,6 +648,7 @@ class _AppsSidebarState extends State<_AppsSidebar> {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('AppsSidebar build');
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final activeTab = widget.coordinator.tabsPath.activeRoute;
     String? activeAppId;
@@ -848,6 +881,131 @@ class _NodeItemState extends State<_NodeItem> {
 }
 
 // ============================================================================
+// Logs Panel
+// ============================================================================
+
+class _LogsPanel extends StatefulWidget {
+  const _LogsPanel({required this.coordinator});
+
+  final AppCoordinator coordinator;
+
+  @override
+  State<_LogsPanel> createState() => _LogsPanelState();
+}
+
+class _LogsPanelState extends State<_LogsPanel> {
+  final List<String> _logs = [];
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.coordinator.addListener(_onCoordinatorChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.coordinator.removeListener(_onCoordinatorChanged);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onCoordinatorChanged() {
+    final activeTab = widget.coordinator.tabsPath.activeRoute;
+    if (activeTab == null) return;
+    final innerPath = widget.coordinator.tabsPath.tabPathFor(activeTab);
+    if (innerPath.stack.isEmpty) return;
+    final route = innerPath.stack.last;
+    final entry = '[${DateTime.now().toIso8601String().substring(11, 19)}] ${route.toUri()}';
+    setState(() {
+      _logs.add(entry);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    debugPrint('LogsPanel build');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
+            children: [
+              Icon(Icons.terminal, size: 20, color: isDark ? Colors.white70 : Colors.grey[700]),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Logs',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(() => _logs.clear()),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Tooltip(
+                    message: 'Clear logs',
+                    child: Icon(Icons.delete_sweep, size: 18, color: isDark ? Colors.white54 : Colors.grey[500]),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => widget.coordinator.logsOpen.value = false,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Icon(Icons.close, size: 18, color: isDark ? Colors.white54 : Colors.grey[500]),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Divider(height: 1, color: isDark ? const Color(0xFF3C3C3C) : const Color(0xFFE0E0E0)),
+        Expanded(
+          child: _logs.isEmpty
+              ? Center(
+                  child: Text(
+                    'No logs yet',
+                    style: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : Colors.grey[400]),
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(8),
+                  itemCount: _logs.length,
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 1),
+                      child: Text(
+                        _logs[index],
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'monospace',
+                          color: isDark ? Colors.greenAccent[400] : Colors.green[800],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+// ============================================================================
 // Coordinator
 // ============================================================================
 
@@ -860,6 +1018,7 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   bool get debugEnabled => true;
 
   final nodesOpen = ValueNotifier<bool>(false);
+  final logsOpen = ValueNotifier<bool>(true);
 
   // ---------------------------------------------------------------------------
   // Static per-tab NavigationPaths
