@@ -7,6 +7,7 @@ import 'package:dynamic_tab_zenrouter/main_chrome_tabs.dart';
 import 'package:dynamic_tab_zenrouter/views/apps_view.dart';
 import 'package:dynamic_tab_zenrouter/widgets/app_back_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:zenrouter/zenrouter.dart';
 
 class AppDetailLayout extends AppRoute with RouteLayout<AppRoute> {
@@ -85,30 +86,32 @@ class _AppDetailLayoutBody extends StatelessWidget {
                           ],
                         ),
                       ),
-                    ListTile(
-                      leading: const Icon(Icons.info),
-                      title: const Text('App Info'),
-                      selected: path.activeIndex == 0,
-                      onTap: () {
-                        coordinator.navigate(AppInfoRoute(appId: route.appId, queries: path.activeRoute.queries));
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.screenshot),
-                      title: const Text('Screenshots'),
-                      selected: path.activeIndex == 1,
-                      onTap: () {
-                        coordinator.navigate(AppsScreenshotsRoute(appId: route.appId, queries: path.activeRoute.queries));
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.history),
-                      title: const Text('Versions'),
-                      selected: path.activeIndex == 2,
-                      onTap: () {
-                        coordinator.navigate(AppVersionsRoute(appId: route.appId, queries: path.activeRoute.queries));
-                      },
-                    ),
+                      ListTile(
+                        leading: const Icon(Icons.info),
+                        title: const Text('App Info'),
+                        selected: path.activeIndex == 0,
+                        onTap: () {
+                          coordinator.navigate(AppInfoRoute(appId: route.appId, queries: path.activeRoute.queries));
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.screenshot),
+                        title: const Text('Screenshots'),
+                        selected: path.activeIndex == 1,
+                        onTap: () {
+                          coordinator.navigate(
+                            AppsScreenshotsRoute(appId: route.appId, queries: path.activeRoute.queries),
+                          );
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.history),
+                        title: const Text('Versions'),
+                        selected: path.activeIndex == 2,
+                        onTap: () {
+                          coordinator.navigate(AppVersionsRoute(appId: route.appId, queries: path.activeRoute.queries));
+                        },
+                      ),
                     ],
                   ),
                 );
@@ -259,15 +262,15 @@ class _AppScreenshotsBodyState extends State<_AppScreenshotsBody> with SingleTic
             controller: _tabController,
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            tabs: [
-              for (final sub in _subTypes) Tab(text: sub[0].toUpperCase() + sub.substring(1)),
-            ],
+            tabs: [for (final sub in _subTypes) Tab(text: sub[0].toUpperCase() + sub.substring(1))],
             onTap: (i) {
-              widget.coordinator.navigate(AppScreenshotSubTypeRoute(
-                appId: widget.route.appId,
-                subType: _subTypes[i],
-                queries: _path.activeRoute.queries,
-              ));
+              widget.coordinator.navigate(
+                AppScreenshotSubTypeRoute(
+                  appId: widget.route.appId,
+                  subType: _subTypes[i],
+                  queries: _path.activeRoute.queries,
+                ),
+              );
             },
           ),
         ),
@@ -306,33 +309,116 @@ class AppScreenshotSubTypeRoute extends AppRoute {
   Widget build(AppCoordinator coordinator, BuildContext context) {
     final appName = kApps.where((a) => a.id == appId).firstOrNull?.name ?? appId;
     final subTitle = subType[0].toUpperCase() + subType.substring(1);
+    final images = _screenshotImages[subType] ?? _screenshotImages['iphone']!;
 
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Text(
-          '$subTitle Screenshots',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Text('$appName — $subTitle', style: TextStyle(color: Colors.grey[600])),
-        const SizedBox(height: 24),
-        ...List.generate(
-          4,
-          (i) => Card(
-            margin: const EdgeInsets.only(bottom: 8),
-            child: ListTile(
-              leading: Icon(Icons.image, color: Colors.blue[300]),
-              title: Text('Screenshot ${i + 1}'),
-              subtitle: Text('$subTitle — $appName screenshot ${i + 1}'),
-              trailing: Text('${(i + 1) * 320}x${(i + 1) * 568}', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$subTitle Screenshots',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text('$appName — $subTitle', style: TextStyle(color: Colors.grey[600])),
+              ],
             ),
           ),
         ),
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          sliver: SliverMasonryGrid.count(
+            crossAxisCount: 3,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childCount: images.length,
+            itemBuilder: (context, i) {
+              final img = images[i];
+              return Column(
+                crossAxisAlignment: .stretch,
+                spacing: 4,
+                children: [
+                  Text('Screenshot ${i + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  ClipRSuperellipse(
+                    borderRadius: BorderRadius.all(Radius.circular(24)),
+                    child: Image.network(
+                      img.url,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return AspectRatio(
+                          aspectRatio: img.aspectRatio,
+                          child: Container(
+                            color: Colors.grey[200],
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stack) => AspectRatio(
+                        aspectRatio: img.aspectRatio,
+                        child: Container(
+                          color: Colors.grey[200],
+                          child: Icon(Icons.broken_image, color: Colors.grey[400]),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
       ],
     );
   }
 }
+
+class _ScreenshotImage {
+  const _ScreenshotImage(this.url, this.aspectRatio);
+  final String url;
+  final double aspectRatio;
+}
+
+const _screenshotImages = <String, List<_ScreenshotImage>>{
+  'iphone': [
+    _ScreenshotImage('https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400', 9 / 19.5),
+    _ScreenshotImage('https://images.unsplash.com/photo-1611532736597-de2d4265fba3?w=400', 9 / 19.5),
+    _ScreenshotImage('https://images.unsplash.com/photo-1556656793-08538906a9f8?w=400', 9 / 19.5),
+    _ScreenshotImage('https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400', 9 / 19.5),
+    _ScreenshotImage('https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?w=400', 9 / 19.5),
+  ],
+  'ipad': [
+    _ScreenshotImage('https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=600', 4 / 3),
+    _ScreenshotImage('https://images.unsplash.com/photo-1585790050230-5dd28404ccb9?w=600', 4 / 3),
+    _ScreenshotImage('https://images.unsplash.com/photo-1542751110-97427bbecf20?w=600', 4 / 3),
+    _ScreenshotImage('https://images.unsplash.com/photo-1527698266440-12104e498b76?w=600', 4 / 3),
+  ],
+  'phone': [
+    _ScreenshotImage('https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=400', 9 / 20),
+    _ScreenshotImage('https://images.unsplash.com/photo-1605170439002-90845e8c0137?w=400', 9 / 20),
+    _ScreenshotImage('https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400', 9 / 20),
+    _ScreenshotImage('https://images.unsplash.com/photo-1617625802912-cde586faf331?w=400', 9 / 20),
+    _ScreenshotImage('https://images.unsplash.com/photo-1585060544812-6b45742d762f?w=400', 9 / 20),
+  ],
+  'tablet7': [
+    _ScreenshotImage('https://images.unsplash.com/photo-1561154464-82e9aab73a55?w=500', 16 / 10),
+    _ScreenshotImage('https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=500', 16 / 10),
+    _ScreenshotImage('https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=500', 16 / 10),
+    _ScreenshotImage('https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?w=500', 16 / 10),
+  ],
+  'tablet10': [
+    _ScreenshotImage('https://images.unsplash.com/photo-1593642632559-0c6d3fc62b89?w=600', 4 / 3),
+    _ScreenshotImage('https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=600', 4 / 3),
+    _ScreenshotImage('https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=600', 4 / 3),
+    _ScreenshotImage('https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600', 4 / 3),
+    _ScreenshotImage('https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=600', 4 / 3),
+  ],
+};
 
 // ============================================================================
 // AppVersionsRoute — Layout with TabBar (tracks from StoreOfApp)
@@ -418,15 +504,11 @@ class _AppVersionsBodyState extends State<_AppVersionsBody> with SingleTickerPro
             controller: _tabController,
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            tabs: [
-              for (final track in _tracks) Tab(text: track[0].toUpperCase() + track.substring(1)),
-            ],
+            tabs: [for (final track in _tracks) Tab(text: track[0].toUpperCase() + track.substring(1))],
             onTap: (i) {
-              widget.coordinator.navigate(AppVersionTrackRoute(
-                appId: widget.route.appId,
-                track: _tracks[i],
-                queries: _path.activeRoute.queries,
-              ));
+              widget.coordinator.navigate(
+                AppVersionTrackRoute(appId: widget.route.appId, track: _tracks[i], queries: _path.activeRoute.queries),
+              );
             },
           ),
         ),
