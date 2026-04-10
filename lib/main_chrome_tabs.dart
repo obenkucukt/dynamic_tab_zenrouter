@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:dynamic_tab_zenrouter/chrome_tabs.dart';
+import 'package:dynamic_tab_zenrouter/panel_path.dart';
 import 'package:dynamic_tab_zenrouter/tabs_path.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -121,7 +122,30 @@ abstract class TabLayoutRoute extends TabRoute with RouteLayout<AppRoute> {
   TabLayoutRoute({super.queries});
 
   @override
+  Type get layout => TabsPanelLayout;
+}
+
+class TabsPanelLayout extends AppRoute with RouteLayout<AppRoute> {
+  @override
+  String get title => 'Tabs';
+
+  @override
   Type get layout => ChromeTabLayout;
+
+  @override
+  TabsPath<TabRoute> resolvePath(AppCoordinator coordinator) => coordinator.tabsPath;
+
+  @override
+  Widget buildPath(covariant AppCoordinator coordinator) {
+    return ChromeTabs<TabRoute>(
+      coordinator: coordinator,
+      path: coordinator.tabsPath,
+      onNewTab: () {
+        final random = Random().nextInt(100);
+        coordinator.navigate(DetailTab(id: random));
+      },
+    );
+  }
 }
 
 // ============================================================================
@@ -150,34 +174,21 @@ class ChromeTabLayout extends AppRoute with RouteLayout<AppRoute> {
   IconData? get icon => Icons.tab;
 
   @override
-  TabsPath<TabRoute> resolvePath(AppCoordinator coordinator) => coordinator.tabsPath;
-
-  @override
-  Widget buildPath(covariant AppCoordinator coordinator) {
-    return ChromeTabs<TabRoute>(
-      coordinator: coordinator,
-      path: coordinator.tabsPath,
-      onNewTab: () {
-        final random = Random().nextInt(100);
-        coordinator.navigate(DetailTab(id: random));
-      },
-    );
-  }
+  PanelPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.panelPath;
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Chrome Tabs Demo'), centerTitle: false, elevation: 0),
-      body: _ChromeTabLayoutBody(coordinator: coordinator, tabsContent: buildPath(coordinator)),
+      body: _ChromeTabLayoutBody(coordinator: coordinator),
     );
   }
 }
 
 class _ChromeTabLayoutBody extends StatefulWidget {
-  const _ChromeTabLayoutBody({required this.coordinator, required this.tabsContent});
+  const _ChromeTabLayoutBody({required this.coordinator});
 
   final AppCoordinator coordinator;
-  final Widget tabsContent;
 
   @override
   State<_ChromeTabLayoutBody> createState() => _ChromeTabLayoutBodyState();
@@ -187,29 +198,28 @@ enum _ActivePanel { apps, nodes, tabs, logs }
 
 class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
   _ActivePanel _hoveredPanel = _ActivePanel.tabs;
-  late final _appsSidebar = _AppsSidebar(coordinator: widget.coordinator);
-  late final _nodesPanel = _NodesPanel(coordinator: widget.coordinator);
-  late final _logsPanel = _LogsPanel(coordinator: widget.coordinator);
 
   @override
   void initState() {
     super.initState();
-    widget.coordinator.tabsPath.addListener(_onTabsChanged);
-    widget.coordinator.nodesOpen.addListener(_onNodesChanged);
-    widget.coordinator.logsOpen.addListener(_onLogsChanged);
+    widget.coordinator.panelPath.addListener(_onPathChanged);
+    widget.coordinator.tabsPath.addListener(_onPathChanged);
+    widget.coordinator.nodesPath.addListener(_onPathChanged);
+    widget.coordinator.logsPath.addListener(_onPathChanged);
+    widget.coordinator.appsPath.addListener(_onPathChanged);
   }
 
   @override
   void dispose() {
-    widget.coordinator.tabsPath.removeListener(_onTabsChanged);
-    widget.coordinator.nodesOpen.removeListener(_onNodesChanged);
-    widget.coordinator.logsOpen.removeListener(_onLogsChanged);
+    widget.coordinator.panelPath.removeListener(_onPathChanged);
+    widget.coordinator.tabsPath.removeListener(_onPathChanged);
+    widget.coordinator.nodesPath.removeListener(_onPathChanged);
+    widget.coordinator.logsPath.removeListener(_onPathChanged);
+    widget.coordinator.appsPath.removeListener(_onPathChanged);
     super.dispose();
   }
 
-  void _onTabsChanged() => setState(() {});
-  void _onNodesChanged() => setState(() {});
-  void _onLogsChanged() => setState(() {});
+  void _onPathChanged() => setState(() {});
 
   _ActivePanel get _activePanel {
     if (_hoveredPanel != _ActivePanel.tabs) return _hoveredPanel;
@@ -217,27 +227,16 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
     return _ActivePanel.tabs;
   }
 
-  void _updateDisplayedUrl(Uri uri) {
-    if (!mounted) return;
-    Router.of(context).routeInformationProvider?.routerReportsNewRouteInformation(
-      RouteInformation(uri: uri),
-      type: RouteInformationReportingType.neglect,
-    );
-  }
-
   void _onPanelEnter(_ActivePanel panel) {
     _hoveredPanel = panel;
+    final layout = switch (panel) {
+      _ActivePanel.apps => AppsLayout(),
+      _ActivePanel.nodes => NodesLayout(),
+      _ActivePanel.tabs => TabsPanelLayout(),
+      _ActivePanel.logs => LogsLayout(),
+    };
+    widget.coordinator.panelPath.focusPanel(layout);
     setState(() {});
-    switch (panel) {
-      case _ActivePanel.apps:
-        _updateDisplayedUrl(Uri.parse('/apps'));
-      case _ActivePanel.nodes:
-        _updateDisplayedUrl(Uri.parse('/nodes'));
-      case _ActivePanel.logs:
-        _updateDisplayedUrl(Uri.parse('/logs'));
-      case _ActivePanel.tabs:
-        _restoreTabUrl();
-    }
   }
 
   void _onPanelExit() {
@@ -245,20 +244,8 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
     setState(() {});
   }
 
-  void _restoreTabUrl() {
-    final tabPath = widget.coordinator.tabsPath;
-    final activeTab = tabPath.activeRoute;
-    if (activeTab == null) return;
-    final innerPath = tabPath.tabPathFor(activeTab);
-    if (innerPath.stack.isEmpty) return;
-
-    final topRoute = innerPath.stack.last;
-    if (topRoute is AppDetailLayout) {
-      final drawerPath = widget.coordinator.appDrawerPath(topRoute.appId);
-      _updateDisplayedUrl(drawerPath.activeRoute.identifier);
-      return;
-    }
-    _updateDisplayedUrl(topRoute.identifier);
+  Widget _buildPanelContent(RouteLayout<AppRoute> layout) {
+    return layout.buildPath(widget.coordinator);
   }
 
   @override
@@ -266,8 +253,8 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final active = _activePanel;
     final borderColor = isDark ? const Color(0xFF3C3C3C) : const Color(0xFFE0E0E0);
-    final nodesOpen = widget.coordinator.nodesOpen.value;
-    final logsOpen = widget.coordinator.logsOpen.value;
+    final nodesOpen = widget.coordinator.panelPath.isPanelOpen(NodesLayout());
+    final logsOpen = widget.coordinator.panelPath.isPanelOpen(LogsLayout());
 
     Color borderFor(_ActivePanel panel) => active == panel ? Colors.blue : borderColor;
     double widthFor(_ActivePanel panel) => active == panel ? 2.5 : 1;
@@ -287,7 +274,7 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
               color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               border: Border.all(color: borderFor(_ActivePanel.apps), width: widthFor(_ActivePanel.apps)),
             ),
-            child: _appsSidebar,
+            child: _buildPanelContent(AppsLayout()),
           ),
         ),
         AnimatedContainer(
@@ -305,7 +292,7 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                       color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                       border: Border.all(color: borderFor(_ActivePanel.nodes), width: widthFor(_ActivePanel.nodes)),
                     ),
-                    child: _nodesPanel,
+                    child: _buildPanelContent(NodesLayout()),
                   ),
                 )
               : const SizedBox.shrink(),
@@ -323,7 +310,7 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                     decoration: BoxDecoration(
                       border: Border.all(color: borderFor(_ActivePanel.tabs), width: widthFor(_ActivePanel.tabs)),
                     ),
-                    child: widget.tabsContent,
+                    child: _buildPanelContent(TabsPanelLayout()),
                   ),
                 ),
               ),
@@ -342,7 +329,7 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                             color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                             border: Border.all(color: borderFor(_ActivePanel.logs), width: widthFor(_ActivePanel.logs)),
                           ),
-                          child: _logsPanel,
+                          child: _buildPanelContent(LogsLayout()),
                         ),
                       )
                     : const SizedBox.shrink(),
@@ -821,7 +808,7 @@ class _NodesPanel extends StatelessWidget {
                 ),
               ),
               GestureDetector(
-                onTap: () => coordinator.nodesOpen.value = false,
+                onTap: () => coordinator.panelPath.remove(NodesLayout()),
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: Icon(Icons.close, size: 18, color: isDark ? Colors.white54 : Colors.grey[500]),
@@ -837,6 +824,19 @@ class _NodesPanel extends StatelessWidget {
             children: _kNodes.map((node) {
               return _NodeItem(nodeId: node.id, label: node.label, icon: node.icon, isDark: isDark);
             }).toList(),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: SizedBox(
+            width: double.infinity,
+            height: 34,
+            child: OutlinedButton.icon(
+              onPressed: () => coordinator.navigate(NodeCreateRoute()),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Create Node', style: TextStyle(fontSize: 13)),
+              style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6))),
+            ),
           ),
         ),
       ],
@@ -973,7 +973,7 @@ class _LogsPanelState extends State<_LogsPanel> {
               ),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: () => widget.coordinator.logsOpen.value = false,
+                onTap: () => widget.coordinator.panelPath.remove(LogsLayout()),
                 child: MouseRegion(
                   cursor: SystemMouseCursors.click,
                   child: Icon(Icons.close, size: 18, color: isDark ? Colors.white54 : Colors.grey[500]),
@@ -1016,6 +1016,222 @@ class _LogsPanelState extends State<_LogsPanel> {
 }
 
 // ============================================================================
+// Panel Layouts
+// ============================================================================
+
+class AppsLayout extends AppRoute with RouteLayout<AppRoute> {
+  @override
+  String get title => 'Apps';
+
+  @override
+  Type get layout => ChromeTabLayout;
+
+  @override
+  NavigationPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.appsPath;
+}
+
+class NodesLayout extends AppRoute with RouteLayout<AppRoute> {
+  @override
+  String get title => 'Nodes';
+
+  @override
+  Type get layout => ChromeTabLayout;
+
+  @override
+  NavigationPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.nodesPath;
+}
+
+class LogsLayout extends AppRoute with RouteLayout<AppRoute> {
+  @override
+  String get title => 'Logs';
+
+  @override
+  Type get layout => ChromeTabLayout;
+
+  @override
+  NavigationPath<AppRoute> resolvePath(AppCoordinator coordinator) => coordinator.logsPath;
+}
+
+// ============================================================================
+// Panel Routes
+// ============================================================================
+
+class AppsRoute extends AppRoute {
+  AppsRoute({super.queries});
+
+  @override
+  String get title => 'Apps';
+
+  @override
+  IconData? get icon => Icons.apps;
+
+  @override
+  Type get layout => AppsLayout;
+
+  @override
+  Uri toUri() => Uri.parse('/apps');
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    return _AppsSidebar(coordinator: coordinator);
+  }
+}
+
+class NodesRoute extends AppRoute {
+  NodesRoute({super.queries});
+
+  @override
+  String get title => 'Nodes';
+
+  @override
+  IconData? get icon => Icons.account_tree;
+
+  @override
+  Type get layout => NodesLayout;
+
+  @override
+  Uri toUri() => Uri.parse('/nodes');
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    return _NodesPanel(coordinator: coordinator);
+  }
+}
+
+class NodeCreateRoute extends AppRoute {
+  NodeCreateRoute({super.queries});
+
+  @override
+  String get title => 'Create Node';
+
+  @override
+  IconData? get icon => Icons.add_circle_outline;
+
+  @override
+  Type get layout => NodesLayout;
+
+  @override
+  Uri toUri() => Uri.parse('/nodes/create');
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 44,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF252525) : const Color(0xFFF5F5F5),
+            border: Border(bottom: BorderSide(color: isDark ? const Color(0xFF3C3C3C) : const Color(0xFFE0E0E0))),
+          ),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () => coordinator.nodesPath.pop(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: const SizedBox(width: 44, height: 44, child: Center(child: Icon(Icons.arrow_back, size: 18))),
+                ),
+              ),
+              Text('Create Node', style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Node Name',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white70 : Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 36,
+                  child: TextField(
+                    style: const TextStyle(fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'Enter node name...',
+                      hintStyle: TextStyle(fontSize: 13, color: isDark ? Colors.white30 : Colors.grey[400]),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Type',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white70 : Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: ['Input', 'Transform', 'Filter', 'Output'].map((type) {
+                    return Chip(
+                      label: Text(type, style: const TextStyle(fontSize: 12)),
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      visualDensity: VisualDensity.compact,
+                    );
+                  }).toList(),
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: double.infinity,
+                  height: 34,
+                  child: ElevatedButton.icon(
+                    onPressed: () => coordinator.nodesPath.pop(),
+                    icon: const Icon(Icons.check, size: 16),
+                    label: const Text('Create', style: TextStyle(fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class LogsRoute extends AppRoute {
+  LogsRoute({super.queries});
+
+  @override
+  String get title => 'Logs';
+
+  @override
+  IconData? get icon => Icons.terminal;
+
+  @override
+  Type get layout => LogsLayout;
+
+  @override
+  Uri toUri() => Uri.parse('/logs');
+
+  @override
+  Widget build(AppCoordinator coordinator, BuildContext context) {
+    return _LogsPanel(coordinator: coordinator);
+  }
+}
+
+// ============================================================================
 // Coordinator
 // ============================================================================
 
@@ -1033,8 +1249,40 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     WidgetsBinding.instance.addPostFrameCallback((_) => notifyListeners());
   }
 
-  final nodesOpen = ValueNotifier<bool>(false);
-  final logsOpen = ValueNotifier<bool>(true);
+  // ---------------------------------------------------------------------------
+  // Panel path (manages all panels like TabsPath manages tabs)
+  // ---------------------------------------------------------------------------
+
+  late final panelPath = PanelPath<AppRoute>.createWith(
+    coordinator: this,
+    label: 'panels',
+    stack: [AppsLayout(), TabsPanelLayout(), LogsLayout()],
+  )..bindLayout(ChromeTabLayout.new);
+
+  // ---------------------------------------------------------------------------
+  // Panel inner NavigationPaths
+  // ---------------------------------------------------------------------------
+
+  late final _appsPath = NavigationPath<AppRoute>.createWith(
+    coordinator: this,
+    label: 'apps-panel',
+    stack: [AppsRoute()],
+  )..bindLayout(AppsLayout.new);
+
+  NavigationPath<AppRoute> get appsPath => _appsPath;
+
+  late final _nodesPath = NavigationPath<AppRoute>.createWith(coordinator: this, label: 'nodes-panel', stack: [])
+    ..bindLayout(NodesLayout.new);
+
+  NavigationPath<AppRoute> get nodesPath => _nodesPath;
+
+  late final _logsPath = NavigationPath<AppRoute>.createWith(
+    coordinator: this,
+    label: 'logs-panel',
+    stack: [LogsRoute()],
+  )..bindLayout(LogsLayout.new);
+
+  NavigationPath<AppRoute> get logsPath => _logsPath;
 
   // ---------------------------------------------------------------------------
   // Static per-tab NavigationPaths
@@ -1129,11 +1377,7 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     return _appDrawerPaths.putIfAbsent(appId, () {
       defineLayoutParent(() => AppDetailLayout(appId: appId));
       final p = IndexedStackPath<AppRoute>.createWith(
-        [
-          AppShortDescRoute(appId: appId),
-          AppLongDescRoute(appId: appId),
-          AppSettingsRoute(appId: appId),
-        ],
+        [AppShortDescRoute(appId: appId), AppLongDescRoute(appId: appId), AppSettingsRoute(appId: appId)],
         coordinator: this,
         label: 'app-drawer-$appId',
       )..bindLayout(() => AppDetailLayout(appId: appId));
@@ -1159,7 +1403,7 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   // ---------------------------------------------------------------------------
 
   late final tabsPath = TabsPath<TabRoute>.createWith(coordinator: this, label: 'tabs', stack: [HomeTabLayout()])
-    ..bindLayout(ChromeTabLayout.new);
+    ..bindLayout(TabsPanelLayout.new);
 
   // ---------------------------------------------------------------------------
   // Coordinator overrides
@@ -1168,6 +1412,7 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   @override
   List<StackPath<RouteTarget>> get paths => [
     ...super.paths,
+    panelPath,
     tabsPath,
     _homeTabPath,
     _aboutTabPath,
@@ -1175,14 +1420,13 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     ..._detailTabPaths.values,
     ..._appTabPaths.values,
     ..._appDrawerPaths.values,
+    _appsPath,
+    _nodesPath,
+    _logsPath,
   ];
 
   @override
   FutureOr<AppRoute> parseRouteFromUri(Uri uri) {
-    if (uri.pathSegments case ['nodes']) {
-      nodesOpen.value = true;
-    }
-
     final q = uri.queryParameters;
 
     return switch (uri.pathSegments) {
@@ -1211,7 +1455,9 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
       ['apps', final id, 'long-desc'] => AppLongDescRoute(appId: id, queries: q),
       ['apps', final id, 'settings'] => AppSettingsRoute(appId: id, queries: q),
       ['apps', final id, 'filter'] => AppFilterRoute(appId: id, queries: q),
-      ['nodes'] => HomeTab(queries: q),
+      ['nodes'] => NodesRoute(queries: q),
+      ['nodes', 'create'] => NodeCreateRoute(queries: q),
+      ['logs'] => LogsRoute(queries: q),
       _ => HomeTab(queries: q),
     };
   }
@@ -1222,6 +1468,10 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     HomeTab(),
     AboutTab(),
     SettingsTab(),
+    AppsRoute(),
+    NodesRoute(),
+    NodeCreateRoute(),
+    LogsRoute(),
     DetailTab(id: 1),
     DetailSectionRoute(tabId: 1, section: 'stats'),
     DetailSectionRoute(tabId: 1, section: 'history'),
@@ -1247,18 +1497,33 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   ];
 
   void _updateWebTitle() {
-    final activeTab = tabsPath.activeRoute;
-    if (activeTab == null) return;
-    final innerPath = tabsPath.tabPathFor(activeTab);
-    if (innerPath.stack.isEmpty) return;
+    final activePanel = panelPath.activeRoute;
 
-    final topRoute = innerPath.stack.last;
-    if (topRoute is AppDetailLayout) {
-      final drawerPath = appDrawerPath(topRoute.appId);
-      drawerPath.activeRoute.buildSeo();
+    if (activePanel is TabsPanelLayout || activePanel == null) {
+      final activeTab = tabsPath.activeRoute;
+      if (activeTab == null) return;
+      final innerPath = tabsPath.tabPathFor(activeTab);
+      if (innerPath.stack.isEmpty) return;
+
+      final topRoute = innerPath.stack.last;
+      if (topRoute is AppDetailLayout) {
+        final drawerPath = appDrawerPath(topRoute.appId);
+        drawerPath.activeRoute.buildSeo();
+        return;
+      }
+      (topRoute as AppRoute).buildSeo();
       return;
     }
-    (topRoute as AppRoute).buildSeo();
+
+    if (activePanel is RouteLayoutParent) {
+      final innerPath = (activePanel as RouteLayoutParent).resolvePath(this);
+      if (innerPath.stack.isNotEmpty) {
+        (innerPath.stack.last as AppRoute).buildSeo();
+        return;
+      }
+    }
+
+    activePanel.buildSeo();
   }
 }
 

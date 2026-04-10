@@ -69,6 +69,11 @@ class HomeTab extends AppRoute {
               icon: const Icon(Icons.settings),
               label: const Text('Open Settings'),
             ),
+            ElevatedButton.icon(
+              onPressed: () => coordinator.navigate(NodesRoute()),
+              icon: const Icon(Icons.account_tree),
+              label: const Text('Open Nodes'),
+            ),
           ],
         ),
       ],
