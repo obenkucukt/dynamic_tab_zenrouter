@@ -204,14 +204,17 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                 curve: Curves.easeInOut,
                 padding: const EdgeInsets.all(2),
                 margin: const EdgeInsets.all(2),
-                decoration: ShapeDecoration(
+
+                child: Material(
                   shape: RoundedSuperellipseBorder(
                     borderRadius: BorderRadius.all(Radius.circular(16)),
                     side: BorderSide(color: borderFor(_ActivePanel.apps), width: widthFor(_ActivePanel.apps)),
                   ),
                   color: Colors.white,
+                  animateColor: true,
+                  clipBehavior: Clip.hardEdge,
+                  child: _buildPanelContent(AppsLayout()),
                 ),
-                child: _buildPanelContent(AppsLayout()),
               ),
             ),
           ),
@@ -225,19 +228,19 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                     child: MouseRegion(
                       onEnter: (_) => _onPanelEnter(_ActivePanel.nodes),
                       onExit: (_) => _onPanelExit(),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
+                      child: Container(
                         padding: const EdgeInsets.all(2),
                         margin: const EdgeInsets.all(2),
-                        decoration: ShapeDecoration(
+                        child: Material(
+                          clipBehavior: Clip.hardEdge,
                           shape: RoundedSuperellipseBorder(
                             borderRadius: BorderRadius.all(Radius.circular(16)),
                             side: BorderSide(color: borderFor(_ActivePanel.nodes), width: widthFor(_ActivePanel.nodes)),
                           ),
                           color: Colors.white,
+                          animateColor: true,
+                          child: _buildPanelContent(NodesLayout()),
                         ),
-                        child: _buildPanelContent(NodesLayout()),
                       ),
                     ),
                   )
@@ -257,14 +260,16 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                         curve: Curves.easeInOut,
                         padding: const EdgeInsets.all(2),
                         margin: const EdgeInsets.all(2),
-                        decoration: ShapeDecoration(
+                        child: Material(
+                          clipBehavior: Clip.hardEdge,
                           shape: RoundedSuperellipseBorder(
                             borderRadius: BorderRadius.all(Radius.circular(16)),
                             side: BorderSide(color: borderFor(_ActivePanel.tabs), width: widthFor(_ActivePanel.tabs)),
                           ),
                           color: Colors.white,
+                          animateColor: true,
+                          child: _buildPanelContent(TabsPanelLayout()),
                         ),
-                        child: _buildPanelContent(TabsPanelLayout()),
                       ),
                     ),
                   ),
@@ -280,14 +285,17 @@ class _ChromeTabLayoutBodyState extends State<_ChromeTabLayoutBody> {
                         curve: Curves.easeInOut,
                         padding: const EdgeInsets.all(2),
                         margin: const EdgeInsets.all(2),
-                        decoration: ShapeDecoration(
+
+                        child: Material(
                           shape: RoundedSuperellipseBorder(
                             borderRadius: BorderRadius.all(Radius.circular(16)),
                             side: BorderSide(color: borderFor(_ActivePanel.logs), width: widthFor(_ActivePanel.logs)),
                           ),
                           color: Colors.white,
+                          animateColor: true,
+                          clipBehavior: Clip.hardEdge,
+                          child: _buildPanelContent(LogsLayout()),
                         ),
-                        child: _buildPanelContent(LogsLayout()),
                       ),
                     ),
                   ),
@@ -512,7 +520,12 @@ class NotFoundRoute extends AppRoute {
           children: [
             Icon(Icons.error_outline, size: 80, color: Colors.red[300]),
             const SizedBox(height: 24),
-            Text('404', style: Theme.of(context).textTheme.displayLarge?.copyWith(fontWeight: FontWeight.bold, color: Colors.red[400])),
+            Text(
+              '404',
+              style: Theme.of(
+                context,
+              ).textTheme.displayLarge?.copyWith(fontWeight: FontWeight.bold, color: Colors.red[400]),
+            ),
             const SizedBox(height: 12),
             Text('Page Not Found', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 16),

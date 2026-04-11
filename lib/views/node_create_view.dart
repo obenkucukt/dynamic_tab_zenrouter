@@ -22,6 +22,10 @@ class NodeCreateRoute extends AppRoute {
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
     return Material(
+      clipBehavior: Clip.hardEdge,
+      shape: RoundedSuperellipseBorder(borderRadius: BorderRadius.all(Radius.circular(16))),
+      color: Colors.white,
+      animateColor: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
