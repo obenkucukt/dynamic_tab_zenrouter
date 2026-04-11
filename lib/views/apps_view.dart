@@ -54,6 +54,7 @@ const kApps = [
     icon: Icons.note,
     color: Color(0xFFFFA726),
     store: StoreOfApp.apple,
+    storeLanguage: 'en',
   ),
   (
     id: 'calendar',
@@ -62,6 +63,7 @@ const kApps = [
     icon: Icons.calendar_today,
     color: Color(0xFFEF5350),
     store: StoreOfApp.google,
+    storeLanguage: 'tr',
   ),
   (
     id: 'music',
@@ -70,6 +72,7 @@ const kApps = [
     icon: Icons.music_note,
     color: Color(0xFFAB47BC),
     store: StoreOfApp.apple,
+    storeLanguage: 'en',
   ),
   (
     id: 'photos',
@@ -78,6 +81,7 @@ const kApps = [
     icon: Icons.photo,
     color: Color(0xFF66BB6A),
     store: StoreOfApp.google,
+    storeLanguage: 'de',
   ),
   (
     id: 'maps',
@@ -86,6 +90,7 @@ const kApps = [
     icon: Icons.map,
     color: Color(0xFF26A69A),
     store: StoreOfApp.apple,
+    storeLanguage: 'fr',
   ),
 ];
 
@@ -219,7 +224,7 @@ class _AppsViewState extends State<AppsView> {
                                     textOpacity: t,
                                     isMinimized: isMinimized(),
                                     onTap: () => widget.coordinator.navigate(
-                                      AppInfoRoute(appId: kApps[index].id, queries: {'store': kApps[index].store.name}),
+                                      AppInfoRoute(appId: kApps[index].id, queries: {'store': kApps[index].store.name, 'storeLanguage': kApps[index].storeLanguage}),
                                     ),
                                   );
                                 },

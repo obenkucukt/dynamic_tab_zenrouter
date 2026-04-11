@@ -414,7 +414,12 @@ class _TabContentStack extends StatelessWidget {
     return NavigationStack<RouteUnique>(
       path: path,
       coordinator: coordinator,
-      resolver: (route) => StackTransition.material(Builder(builder: (ctx) => route.build(coordinator, ctx))),
+      resolver: (route) {
+        if (route case RouteTransition rt) {
+          return rt.transition(coordinator);
+        }
+        return StackTransition.material(Builder(builder: (ctx) => route.build(coordinator, ctx)));
+      },
     );
   }
 }

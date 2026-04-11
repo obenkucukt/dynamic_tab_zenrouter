@@ -173,10 +173,13 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
   IndexedStackPath<AppRoute> appDrawerPath(String appId) {
     return _appDrawerPaths.putIfAbsent(appId, () {
       defineLayoutParent(() => AppDetailLayout(appId: appId));
-      final store = kApps.where((a) => a.id == appId).firstOrNull?.store;
-      final q = <String, String>{if (store != null) 'store': store.name};
+      final q = _appQueries(appId);
       final p = IndexedStackPath<AppRoute>.createWith(
-        [AppInfoRoute(appId: appId, queries: q), AppsScreenshotsRoute(appId: appId, queries: q), AppVersionsRoute(appId: appId, queries: q)],
+        [
+          AppInfoRoute(appId: appId, queries: q),
+          AppsScreenshotsRoute(appId: appId, queries: q),
+          AppVersionsRoute(appId: appId, queries: q),
+        ],
         coordinator: this,
         label: 'app-drawer-$appId',
       )..bindLayout(() => AppDetailLayout(appId: appId));
@@ -195,7 +198,7 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     return _appScreenshotsPaths.putIfAbsent(appId, () {
       defineLayoutParent(() => AppsScreenshotsRoute(appId: appId));
       final store = kApps.where((a) => a.id == appId).firstOrNull?.store ?? StoreOfApp.apple;
-      final q = <String, String>{'store': store.name};
+      final q = _appQueries(appId);
       final subTypes = store.screenshotSubTypes;
       final p = IndexedStackPath<AppRoute>.createWith(
         [for (final sub in subTypes) AppScreenshotSubTypeRoute(appId: appId, subType: sub, queries: q)],
@@ -217,7 +220,7 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     return _appVersionsPaths.putIfAbsent(appId, () {
       defineLayoutParent(() => AppVersionsRoute(appId: appId));
       final store = kApps.where((a) => a.id == appId).firstOrNull?.store ?? StoreOfApp.apple;
-      final q = <String, String>{'store': store.name};
+      final q = _appQueries(appId);
       final tracks = store.versionTracks;
       final p = IndexedStackPath<AppRoute>.createWith(
         [for (final track in tracks) AppVersionTrackRoute(appId: appId, track: track, queries: q)],
@@ -300,15 +303,21 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
       ['apps'] => HomeTab(queries: q),
       ['apps', final id] => AppInfoRoute(appId: id, queries: q),
       ['apps', final id, 'info'] => AppInfoRoute(appId: id, queries: q),
-      ['apps', final id, 'screenshots'] => AppScreenshotSubTypeRoute(appId: id, subType: _defaultScreenshotSubType(id), queries: q),
-      ['apps', final id, 'screenshots', final sub] => _isValidScreenshotSubType(id, sub)
-          ? AppScreenshotSubTypeRoute(appId: id, subType: sub, queries: q)
-          : NotFoundRoute(requestedPath: uri.toString(), queries: q),
+      ['apps', final id, 'screenshots'] => AppScreenshotSubTypeRoute(
+        appId: id,
+        subType: _defaultScreenshotSubType(id),
+        queries: q,
+      ),
+      ['apps', final id, 'screenshots', final sub] =>
+        _isValidScreenshotSubType(id, sub)
+            ? AppScreenshotSubTypeRoute(appId: id, subType: sub, queries: q)
+            : NotFoundRoute(requestedPath: uri.toString(), queries: q),
       ['apps', final id, 'versions'] => AppVersionTrackRoute(appId: id, track: _defaultTrack(id), queries: q),
-      ['apps', final id, 'versions', final track] => _isValidTrack(id, track)
-          ? AppVersionTrackRoute(appId: id, track: track, queries: q)
-          : NotFoundRoute(requestedPath: uri.toString(), queries: q),
-      ['apps', final id, 'filter'] => AppFilterRoute(appId: id, queries: q),
+      ['apps', final id, 'versions', final track] =>
+        _isValidTrack(id, track)
+            ? AppVersionTrackRoute(appId: id, track: track, queries: q)
+            : NotFoundRoute(requestedPath: uri.toString(), queries: q),
+      ['apps', final id, 'languages'] => AppLanguageRoute(appId: id, queries: q),
       ['nodes'] => NodesRoute(queries: q),
       ['nodes', 'create'] => NodeCreateRoute(queries: q),
       ['logs'] => LogsRoute(queries: q),
@@ -349,8 +358,8 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     AppVersionTrackRoute(appId: 'calendar', track: 'beta'),
     AppVersionTrackRoute(appId: 'calendar', track: 'alpha'),
     AppVersionTrackRoute(appId: 'calendar', track: 'internal'),
-    AppFilterRoute(appId: 'notes'),
-    AppFilterRoute(appId: 'calendar'),
+    AppLanguageRoute(appId: 'notes'),
+    AppLanguageRoute(appId: 'calendar'),
     PostDetailRoute(postId: 1, postTitle: 'Post 1'),
     PostCommentRoute(postId: 1),
     TechDetailRoute(name: 'Flutter'),
@@ -359,6 +368,26 @@ class AppCoordinator extends Coordinator<AppRoute> with CoordinatorDebug<AppRout
     SettingsSectionRoute(sectionId: 'tabs', sectionTitle: 'Tab Behavior'),
     NotFoundRoute(requestedPath: '/invalid-page'),
   ];
+
+  Map<String, String> _appQueries(String appId) {
+    final app = kApps.where((a) => a.id == appId).firstOrNull;
+    return <String, String>{
+      if (app != null) ...{'store': app.store.name, 'storeLanguage': app.storeLanguage},
+    };
+  }
+
+  void updateAppQueries(String appId, Map<String, String> queries) {
+    void applyToPath(IndexedStackPath<AppRoute> path) {
+      for (final r in path.stack) {
+        r.queryNotifier.value = queries;
+      }
+    }
+
+    if (_appDrawerPaths.containsKey(appId)) applyToPath(appDrawerPath(appId));
+    if (_appScreenshotsPaths.containsKey(appId)) applyToPath(appScreenshotsPath(appId));
+    if (_appVersionsPaths.containsKey(appId)) applyToPath(appVersionsPath(appId));
+    markNeedRebuild();
+  }
 
   String _defaultScreenshotSubType(String appId) {
     final store = kApps.where((a) => a.id == appId).firstOrNull?.store ?? StoreOfApp.apple;

@@ -18,6 +18,8 @@ dependencies:
   motor: ^1.1.0
   mix: ^2.0.1
   flutter_staggered_grid_view: ^0.7.0
+  stupid_simple_sheet: ^1.0.0-dev.2
+  heroine: ^0.7.2
 
 dev_dependencies:
   flutter_test:

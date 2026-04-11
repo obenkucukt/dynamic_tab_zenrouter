@@ -4,8 +4,8 @@
 
 import 'package:dynamic_tab_zenrouter/app_coordinator.dart';
 import 'package:dynamic_tab_zenrouter/main_chrome_tabs.dart';
+import 'package:dynamic_tab_zenrouter/stupid_sheet_page.dart';
 import 'package:dynamic_tab_zenrouter/views/apps_view.dart';
-import 'package:dynamic_tab_zenrouter/widgets/app_back_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:zenrouter/zenrouter.dart';
@@ -110,6 +110,19 @@ class _AppDetailLayoutBody extends StatelessWidget {
                         selected: path.activeIndex == 2,
                         onTap: () {
                           coordinator.navigate(AppVersionsRoute(appId: route.appId, queries: path.activeRoute.queries));
+                        },
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.language),
+                        title: const Text('Language'),
+                        subtitle: path.activeRoute.selectorBuilder<String?>(
+                          selector: (q) => q['storeLanguage'],
+                          builder: (context, lang) =>
+                              Text(lang ?? '—', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        ),
+                        onTap: () {
+                          coordinator.push(AppLanguageRoute(appId: route.appId, queries: path.activeRoute.queries));
                         },
                       ),
                     ],
@@ -582,147 +595,155 @@ class AppVersionTrackRoute extends AppRoute {
 }
 
 // ============================================================================
-// AppFilterRoute — sub-route for editing filters
+// AppLanguageRoute — drawer item for changing storeLanguage query param
 // ============================================================================
 
-const _kAvailableFilters = {
-  'f1': ['all', 'active', 'archived', 'draft'],
-  'f2': ['newest', 'oldest', 'popular', 'trending'],
-  'f3': ['free', 'paid', 'subscription'],
-  'f4': ['mobile', 'desktop', 'web', 'all-platforms'],
+const _kAvailableLanguages = ['en', 'tr', 'de', 'fr', 'es', 'it', 'ja', 'ko', 'zh', 'pt'];
+
+const _kLanguageLabels = <String, String>{
+  'en': 'English',
+  'tr': 'Türkçe',
+  'de': 'Deutsch',
+  'fr': 'Français',
+  'es': 'Español',
+  'it': 'Italiano',
+  'ja': '日本語',
+  'ko': '한국어',
+  'zh': '中文',
+  'pt': 'Português',
 };
 
-class AppFilterRoute extends AppRoute {
-  AppFilterRoute({required this.appId, super.queries});
+class AppLanguageRoute extends AppRoute with RouteTransition {
+  AppLanguageRoute({required this.appId, super.queries});
 
   final String appId;
 
   @override
-  String get title => 'Filters';
+  String get title => 'Language';
 
   @override
-  IconData? get icon => Icons.filter_list;
+  IconData? get icon => Icons.language;
 
   @override
-  List<Object?> get props => [appId, 'filter'];
+  List<Object?> get props => [appId, 'languages'];
 
   @override
   Object? get parentLayoutKey => (AppTabLayout, appId);
 
   @override
-  Uri toUri() => Uri.parse('/apps/$appId/filter');
+  Uri toUri() => Uri.parse('/apps/$appId/languages');
+
+  @override
+  StackTransition<T> transition<T extends RouteUnique>(covariant AppCoordinator coordinator) {
+    return StackTransition.custom(
+      builder: (context) => build(coordinator, context),
+      pageBuilder: (context, key, child) => StupidSimpleSheetPage(key: key, child: child),
+    );
+  }
 
   @override
   Widget build(AppCoordinator coordinator, BuildContext context) {
-    return _AppFilterBody(route: this, coordinator: coordinator);
+    return _AppLanguageBody(route: this, coordinator: coordinator);
   }
 }
 
-class _AppFilterBody extends StatefulWidget {
-  const _AppFilterBody({required this.route, required this.coordinator});
+class _AppLanguageBody extends StatelessWidget {
+  const _AppLanguageBody({required this.route, required this.coordinator});
 
-  final AppFilterRoute route;
+  final AppLanguageRoute route;
   final AppCoordinator coordinator;
 
-  @override
-  State<_AppFilterBody> createState() => _AppFilterBodyState();
-}
-
-class _AppFilterBodyState extends State<_AppFilterBody> {
-  void _updateFilter(String key, String? value) {
-    final updated = Map<String, String>.from(widget.route.queries);
-    if (value != null) {
-      updated[key] = value;
-    } else {
-      updated.remove(key);
-    }
-    widget.route.updateQueries(widget.coordinator, queries: updated);
+  void _selectLanguage(String lang) {
+    final updated = Map<String, String>.from(route.queries);
+    updated['storeLanguage'] = lang;
+    route.updateQueries(coordinator, queries: updated);
   }
 
   void _onSave() {
-    widget.coordinator.tryPop();
+    coordinator.tryPop();
+    coordinator.updateAppQueries(route.appId, route.queries);
   }
 
   @override
   Widget build(BuildContext context) {
-    final appName = kApps.where((a) => a.id == widget.route.appId).firstOrNull?.name ?? widget.route.appId;
+    final appName = kApps.where((a) => a.id == route.appId).firstOrNull?.name ?? route.appId;
 
-    return Column(
-      children: [
-        InTabNavBar(title: 'Edit Filters - $appName', coordinator: widget.coordinator),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              Text('Filters', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text('Select values for each filter. Press Save to apply.', style: TextStyle(color: Colors.grey[600])),
-              const SizedBox(height: 24),
-              ..._kAvailableFilters.entries.map((entry) {
-                final filterKey = entry.key;
-                final options = entry.value;
-
-                return widget.route.selectorBuilder<String?>(
-                  selector: (q) => q[filterKey],
-                  builder: (context, current) {
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text(
-                                  filterKey.toUpperCase(),
-                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, letterSpacing: 1),
-                                ),
-                                const Spacer(),
-                                if (current != null)
-                                  GestureDetector(
-                                    onTap: () => _updateFilter(filterKey, null),
-                                    child: Text('Clear', style: TextStyle(color: Colors.red[400], fontSize: 13)),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: options.map((option) {
-                                final selected = current == option;
-                                return ChoiceChip(
-                                  label: Text(option),
-                                  selected: selected,
-                                  onSelected: (val) => _updateFilter(filterKey, val ? option : null),
-                                );
-                              }).toList(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Material(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Store Language',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text('$appName — Select the store language', style: TextStyle(color: Colors.grey[600])),
+            const SizedBox(height: 8),
+            route.selectorBuilder<String?>(
+              selector: (q) => q['storeLanguage'],
+              builder: (context, currentLang) {
+                return Chip(
+                  avatar: const Icon(Icons.check_circle, size: 18),
+                  label: Text(_kLanguageLabels[currentLang] ?? currentLang ?? '—'),
                 );
-              }),
-              const SizedBox(height: 16),
-              FilledButton.icon(
+              },
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: route.selectorBuilder<String?>(
+                selector: (q) => q['storeLanguage'],
+                builder: (context, currentLang) {
+                  return ListView.separated(
+                    itemCount: _kAvailableLanguages.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, i) {
+                      final lang = _kAvailableLanguages[i];
+                      final selected = currentLang == lang;
+                      return ListTile(
+                        leading: Text(
+                          lang.toUpperCase(),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            color: selected ? Theme.of(context).colorScheme.primary : Colors.grey[600],
+                          ),
+                        ),
+                        title: Text(_kLanguageLabels[lang] ?? lang),
+                        trailing: selected
+                            ? Icon(Icons.check_circle, color: Theme.of(context).colorScheme.primary)
+                            : null,
+                        selected: selected,
+                        onTap: () => _selectLanguage(lang),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
                 onPressed: _onSave,
                 icon: const Icon(Icons.check),
-                label: const Text('Save Filters'),
+                label: const Text('Save'),
                 style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
               ),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: () => widget.coordinator.tryPop(),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => coordinator.tryPop(),
                 style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
                 child: const Text('Cancel'),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
